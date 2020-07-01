@@ -34,6 +34,7 @@ I've written a simple SRS interface (pictured below) with a very simple scheduli
 *	the red word in each line is the target word and is the only thing the user is responsible for knowning
 *	the EDICT dictionary entry for the target word, when available, is shown in the top window (I know, bilingual dicts are for n00bs)
 *	the red background is for words that are due and the green background are "i+1" words ready for activation
+
 So I've been busy testing my assumptions and I've found that:
 1. In general, the examples produced are actually pretty high quality.  I haven't really had any problems with weak contexts.
 2. The "i+1" thing is way stronger than I'd expected.  I've only got around 2600 words "known" right now and I've already got over 5000 unique words available in "i+1" contexts, so that's actually a lot better than I was expecting.
@@ -43,7 +44,7 @@ So I've been busy testing my assumptions and I've found that:
 1. Text segmentation.  The model can be as good as you like at learning relationships between tokens, but if the text is not properly tokenized, you'll get situations like I'm seeing in the second image, below.  The tokenization is being done by MeCab and I'm just using the result lazily at present.  The result is that there aren't many words that line up properly with dictionary entries.  Some examples include 司法書士、成功報酬、共有名義、贈与税、and the list goes on.  There are simple words that are not being unconjugated and there are compound words that are being tokenized too far.  I happen to think that MeCab and EDICT are both excellent projects and I could use them together much more effectively than I currently am to try and ensure proper boundaries when segmenting text.  For example, on a character level, I could load the EDICT keywords into a Trie data structure and greedily match patterns.  If I don't find anything, I could check to see if MeCab has resolved that token to an unconjugated/uninflected form that can be looked up.  That could definitely be improved upon, but it would be a large step in the right direction.
 2. Definitions.  I'm currently using EDICT.  It's great, and it's got a lot of miles left for an application like this, especially with improvements in text segmentation, but coming up with definitions... I'm open to suggestions.  Seriously.
 
-### Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:
+Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:<br/>
 ✓ : Automate evaluation/production of high-context flashcard material<br/>
 ✗ : Segment text in a way that is optimally meaningful for an L2 learner<br/>
 ✗ : Have a really comprehensive dictionary<br/>
@@ -51,80 +52,81 @@ So I've been busy testing my assumptions and I've found that:
 ![image of srs program](images/basic_srs.png "Basic SRS")
 ![image of srs program with definitions](images/basic_srs_def_mode.png "Basic SRS w/defs")
 
-	Other takeaways:
-		1) I'd like to start a conversation about the role of machine learning in second language acquisition
-		2) I'd like to crowdsource Japanese text aggregation to scale this up from 20k tokens to, say, 70-80k
-		3) I'd like to share my ideas on "atomizing" words/grammar/phrases in sentence flashcards
-		4) I'd like to get ideas and feedback -- especially on tokenizing and definitions
-		5) You can "take away" around 1.1 million "high-quality" example sentences (according to my language model).  This is composed of the top 100 examples of around 11,000 words representing the 80th to 99th percentile by frequency of the 20,000 word lexicon making up the current dataset (segmented using MeCab).
+Other takeaways:
+1. I'd like to start a conversation about the role of machine learning in second language acquisition
+2. I'd like to crowdsource Japanese text aggregation to scale this up from 20k tokens to, say, 70-80k
+3. I'd like to share my ideas on "atomizing" words/grammar/phrases in sentence flashcards
+4. I'd like to get ideas and feedback -- especially on tokenizing and definitions
+5. You can "take away" around 1.1 million "high-quality" example sentences (according to my language model).  This is composed of the top 100 examples of around 11,000 words representing the 80th to 99th percentile by frequency of the 20,000 word lexicon making up the current dataset (segmented using MeCab).
 
-	Examples of strong and weak contexts (according to my model)
+### Examples:
+Examples of strong and weak contexts (according to my model)
 
-		Japanese text from social media segmented with MeCab (20k tokens) on a deep stack of iterated dilated convolutional layers
+Japanese text from social media segmented with MeCab (20k tokens) on a deep stack of iterated dilated convolutional layers
 
-			Word:	特許
-			Strong:	特許	一般的には発明をしたら最初に__特許__出願をして、次にどこかに発表するという手順の方がいいです。最初に発表すると特許が認められなくなります。
-			Weak:	特許	立派だと思います。むしろ介護は体力も必要な仕事ですから、男性の介護士は重宝されると思われます。…てか、なんでこの質問が「__特許__」カテゴリ？
+Word:	特許<br/>
+Strong:	特許	一般的には発明をしたら最初に __特許__ 出願をして、次にどこかに発表するという手順の方がいいです。最初に発表すると特許が認められなくなります。<br/>
+Weak:	特許	立派だと思います。むしろ介護は体力も必要な仕事ですから、男性の介護士は重宝されると思われます。…てか、なんでこの質問が「 __特許__ 」カテゴリ？<br/>
 
-			Word:	概念
-			Strong:	概念	人間とロボットの関係という__概念__はあるようですが、ロボット同士の関係はないようですね。人間には人間関係がある。ロボットにはロボット関係がない。
-			Weak:	概念	基本的には同じものですが__概念__が違うようです。ピクセルというのは点１つ分の長さです。つまり、１ピクセル×１ピクセルが１つの点になります。
+Word:	概念<br/>
+Strong:	概念	人間とロボットの関係という __概念__ はあるようですが、ロボット同士の関係はないようですね。人間には人間関係がある。ロボットにはロボット関係がない。<br/>
+Weak:	概念	基本的には同じものですが __概念__ が違うようです。ピクセルというのは点１つ分の長さです。つまり、１ピクセル×１ピクセルが１つの点になります。<br/>
 
-			Word:	送金
-			Strong:	送金	日本からオーストラリアの銀行口座に__送金__する方法でもっとも手数料が掛からない方法はどうしたら良いでしょうか？
-			Weak:	送金	パチンコのほうが許せるかな北朝鮮に__送金__といってもいまいちピンとこないし。身近で被害を被っているタバコのほうがやめて欲しいです。
-	
-	Examples of model preferences for "filling in the blank"
+Word:	送金<br/>
+Strong:	送金	日本からオーストラリアの銀行口座に __送金__ する方法でもっとも手数料が掛からない方法はどうしたら良いでしょうか？<br/>
+Weak:	送金	パチンコのほうが許せるかな北朝鮮に __送金__ といってもいまいちピンとこないし。身近で被害を被っているタバコのほうがやめて欲しいです。<br/>
 
-		English text from Arxiv papers segmented with BPE (20k tokens) on a shallow stack of BiLSTM layers
+Examples of model preferences for "filling in the blank"
 
-			prompt:
-				darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].
-			answer:
-				. Similar to 
-			predictions:
-			0.109294474	. According to 
-			0.05470071	. For 
-			0.038690485	. Unlike 
-			0.013808575	. Compared to 
-			0.013448008	. Using 
-			0.011497075	. On 
-			0.00815414	. Based on 
-			0.008007415	. Following 
-			0.007719114	. In such 
-			0.005134958	. From 
+English text from Arxiv papers segmented with BPE (20k tokens) on a shallow stack of BiLSTM layers
 
-			prompt:
-				provide a reward function. We present baseline policies trained using reinforcement learning for four different commercial robots in the six environments. We *****************modeling human motion results in better assistance and we compare the performance of different robots. Overall, we show that Assistive Gym is a promising tool for assistive robotics research.
-			answer:
-				demonstrate that 
-			predictions:
-			0.09668377	note that 
-			0.033988427	found that 
-			0.03374812	believe that 
-			0.024705352	argue that 
-			0.02412532	show how 
-			0.02130807	demonstrated that 
-			0.017756354	expect 
-			0.014219382	know that 
-			0.010730732	notice that 
-			0.010415988	suggest that 
+	prompt:
+		darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].
+	answer:
+		. Similar to 
+	predictions:
+	0.109294474	. According to 
+	0.05470071	. For 
+	0.038690485	. Unlike 
+	0.013808575	. Compared to 
+	0.013448008	. Using 
+	0.011497075	. On 
+	0.00815414	. Based on 
+	0.008007415	. Following 
+	0.007719114	. In such 
+	0.005134958	. From 
 
-			prompt:
-				means that we need a criterion to know when our test data has covered all plausible situations. Our work not only focuses on a test ending criterion but on a *************testing criterion that lets us evaluate how much of the system's decision space a test suite covers, rather than how much of the possible scenarios have been covered, as different scenarios could lead to the same decisions.
-			answer:
-				more general 
-			predictions:
-			0.0029336014	fast 
-			0.0024056516	complex 
-			0.0022412534	behavioral 
-			0.0021178033	powerful 
-			0.0020651175	null 
-			0.0019631959	strong 
-			0.0016073828	consistent 
-			0.0015987481	simplified 
-			0.0014659748	sparse 
-			0.0013874066	secure 
+	prompt:
+		provide a reward function. We present baseline policies trained using reinforcement learning for four different commercial robots in the six environments. We *****************modeling human motion results in better assistance and we compare the performance of different robots. Overall, we show that Assistive Gym is a promising tool for assistive robotics research.
+	answer:
+		demonstrate that 
+	predictions:
+	0.09668377	note that 
+	0.033988427	found that 
+	0.03374812	believe that 
+	0.024705352	argue that 
+	0.02412532	show how 
+	0.02130807	demonstrated that 
+	0.017756354	expect 
+	0.014219382	know that 
+	0.010730732	notice that 
+	0.010415988	suggest that 
+
+	prompt:
+		means that we need a criterion to know when our test data has covered all plausible situations. Our work not only focuses on a test ending criterion but on a *************testing criterion that lets us evaluate how much of the system's decision space a test suite covers, rather than how much of the possible scenarios have been covered, as different scenarios could lead to the same decisions.
+	answer:
+		more general 
+	predictions:
+	0.0029336014	fast 
+	0.0024056516	complex 
+	0.0022412534	behavioral 
+	0.0021178033	powerful 
+	0.0020651175	null 
+	0.0019631959	strong 
+	0.0016073828	consistent 
+	0.0015987481	simplified 
+	0.0014659748	sparse 
+	0.0013874066	secure 
 
 General background on Second Language Acquisition (SLA) and my personal experience learning Japanese:
 
