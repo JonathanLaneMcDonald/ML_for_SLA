@@ -1,4 +1,6 @@
 
+[A million "i+1" sentences from Japanese social media](data/contexts.db.bz2 "a million i+1 sentences")
+
 ## Optimizing L2 Vocabulary Acquisition Through Machine Learning
 ### Where "i+1" and masked language models meet
 
@@ -282,6 +284,7 @@ Testing is required to narrow in on a suitable CNN architecture, so the scaled-d
 
 ![area under the curve](images/char_lvl_design_auc.png "Char Level: Area Under Curve")
 ![perplexity](images/char_lvl_design_ppl.png "Char Level: Perplexity")
+
 Figure 1: AUC and Perplexity on a character level prediction task
 
 Starting with 100d and undilated convolutions and varying the depth of the convolutional stack from 3 to 5 layers, we can see that there is almost no benefit to AUC or perplexity.  The large improvement obtained from increasing the dimensionality to 200d suggests that, while 100d and even 50d (according to some publication I can't remember) are fine for embedding sizes, 100d is too small to capture a rich context in the convolutional stack, itself.  Attempting to increase the receptive field of the undilated convolutions by going from 5 layers to 10 (in green) results in classic signs of overfitting, evidenced by poorer AUC and perplexity on the validation set as training continues.  Iterated dilations were tried in an effort to increase the receptive field without overfitting.  It worked pretty well, but I didn't let the IDCNN train long enough to demonstrate either that it wouldn't overfit or that it ultimately achieves better perplexity than the undilated 5 layer convolutional stack, but it does learn much more quickly, so I decided to move to fine-tuning.  The point at which fine-tuning begins is pretty obvious by the sudden improvement around 125 epochs on the maroon colored data.  Fine-tuning was done using Adam(lr=0.0001) and by increasing the batch size to 1024.
@@ -335,23 +338,23 @@ This would do a few things:
 
 In multiple choice questions, distractors are the other answers that are meant to sound plausible and distract you from the answer.  The test-taker is then meant to be discerning enough to tell the difference and select the right answer anyway.  Some work has been done on distractor generation (https://arxiv.org/abs/2004.09853) and there are basically two pretty straightforward ways of attempting distractor generation in this case.
 
-* Using the trained model, itself. A pretty sweet bonus of having trained a language model is that we can use the same language model to produce a high-quality set of distractors.  This leverages the fact that the language model is relying on having learned embeddings at the input layer and on having generated contextual embeddings right before the classification layer.  Those contextual embeddings, as mentioned in reference to the ELMo and BERT models, are there to map onto an expected value, but the values aren't one-hot.  These input and output level embedding layers are basically doing dimensionality reduction, which is kind of also the same thing as lossy compression.  This is achieved, in this case, by grouping things in a vector space on the basis of semantic similarity, which means that, instead of merely asking the model for the argmax of the predicted value, we should be able to take, say, the top 10 or 20 predictions and they should be plausible candidates for the fill in the blank problem.  In other words, they'll probably make good distractors, which allows this to be used in two modes: recognition mode and multiple-choice mode.
+Using the trained model, itself. A pretty sweet bonus of having trained a language model is that we can use the same language model to produce a high-quality set of distractors.  This leverages the fact that the language model is relying on having learned embeddings at the input layer and on having generated contextual embeddings right before the classification layer.  Those contextual embeddings, as mentioned in reference to the ELMo and BERT models, are there to map onto an expected value, but the values aren't one-hot.  These input and output level embedding layers are basically doing dimensionality reduction, which is kind of also the same thing as lossy compression.  This is achieved, in this case, by grouping things in a vector space on the basis of semantic similarity, which means that, instead of merely asking the model for the argmax of the predicted value, we should be able to take, say, the top 10 or 20 predictions and they should be plausible candidates for the fill in the blank problem.  In other words, they'll probably make good distractors, which allows this to be used in two modes: recognition mode and multiple-choice mode.
 
 The following is an admittedly cherry-picked example, but it demonstrates the plausibility of the approach.  The answer itself is a day of the week and the distractors are other days of the week, holidays, times of day, and months of the year... so they're all time-related, and could be randomly sampled at quiz time to build a novel set of multiple choice answers.  The second example is actually pretty entertaining, lol... the model seems to think this person is hanging out in some questionable joints :D
 
 Note: Japanese text doesn't have spaces and I don't endorse using spaces in flashcards.  The following is a tokenized view to show how the model sees the text and to facilitate identification of i+1 cards by already having the flashcard tokenized.  It's pretty much copy/pasted from the million+ examples file I uploaded (with minimal editing).
 
-Answer: 土曜日
-Question: [SEG] 今週 の 日曜日 と 言っ たら １ ７ 日 です ね 。 建前 から 言っ たら 一 週 は 日曜日 から 始まる こと に なっ て い ます が 、 最近 で は ビジネス 手帳 を 中心 に カレンダー の 多く が 、 週 は 月曜日 から 始まっ て [MASK] ・ 日曜日 で 終わる 表記 の もの が 主流 です 。 [SEG] [SEG]
-Distractors:
-土曜日 0.3185852 土 0.11403965 土曜 0.07522853 祝日 0.05303336 月曜日 0.049625997 あさって 0.029116696 月曜 0.025645258 火曜日 0.016687687 夕方 0.016655127 １１月 0.015224018
+Answer: 土曜日<br/>
+Question: [SEG] 今週 の 日曜日 と 言っ たら １ ７ 日 です ね 。 建前 から 言っ たら 一 週 は 日曜日 から 始まる こと に なっ て い ます が 、 最近 で は ビジネス 手帳 を 中心 に カレンダー の 多く が 、 週 は 月曜日 から 始まっ て [MASK] ・ 日曜日 で 終わる 表記 の もの が 主流 です 。 [SEG] [SEG]<br/>
+Distractors:<br/>
+土曜日 0.3185852 土 0.11403965 土曜 0.07522853 祝日 0.05303336 月曜日 0.049625997 あさって 0.029116696 月曜 0.025645258 火曜日 0.016687687 夕方 0.016655127 １１月 0.015224018<br/>
 
-Answer: 居酒屋
-Question: [SEG] 私 が 働い て い た スポーツ ジム は 結構 、 みんな 仲良く て 飲み 会 とか ２ ヶ月 に １ 回 くらい で やっ て まし た よ 。 でも １ 番 出会い が 多い の は 居酒屋 だ と 思い ます 。 私 の 周り は [MASK] の バイト で 知り合っ た 彼氏 が 多かっ た ので 。 [SEG] [SEG] [SEG]	
-Distractors:
-スナック 0.25561944 飲み屋 0.1136522 サクラ 0.053267717 居酒屋 0.045296103 スタバ 0.035692472 キャバクラ 0.031131526 水商売 0.0271534 酒屋 0.024966074 ファミレス 0.017192462 ゲームセンター 0.014619579
+Answer: 居酒屋<br/>
+Question: [SEG] 私 が 働い て い た スポーツ ジム は 結構 、 みんな 仲良く て 飲み 会 とか ２ ヶ月 に １ 回 くらい で やっ て まし た よ 。 でも １ 番 出会い が 多い の は 居酒屋 だ と 思い ます 。 私 の 周り は [MASK] の バイト で 知り合っ た 彼氏 が 多かっ た ので 。 [SEG] [SEG] [SEG]	<br/>
+Distractors:<br/>
+スナック 0.25561944 飲み屋 0.1136522 サクラ 0.053267717 居酒屋 0.045296103 スタバ 0.035692472 キャバクラ 0.031131526 水商売 0.0271534 酒屋 0.024966074 ファミレス 0.017192462 ゲームセンター 0.014619579<br/>
 
-* A second method for generating distractors would be to generate embeddings with a cooccurrence matrix/PCA and randomly sample nearest neighbors or something, but that would just mean sampling static vectors and would be less context-appropriate than using the model.
+A second method for generating distractors would be to generate embeddings with a cooccurrence matrix/PCA and randomly sample nearest neighbors or something, but that would just mean sampling static vectors and would be less context-appropriate than using the model.
 
 ##### Applications:
 
@@ -375,6 +378,6 @@ So the learner could switch between passive and active quiz modes.  A technical 
 
 Post...face?
 
-	If you think it's a cool project, drop me a line.  If you have ideas or errata, drop me a line.  If you'd like to contribute some code or help me scale this up or develop an open source app or something, then also get in touch.
+If you think it's a cool project, drop me a line.  If you have ideas or errata, drop me a line.  If you'd like to contribute some code or help me scale this up or develop an open source app or something, then also get in touch.
 
 
