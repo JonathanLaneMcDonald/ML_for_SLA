@@ -44,7 +44,7 @@ So I've been busy testing my assumptions and I've found that:
 1. Text segmentation.  The model can be as good as you like at learning relationships between tokens, but if the text is not properly tokenized, you'll get situations like I'm seeing in the second image, below.  The tokenization is being done by MeCab and I'm just using the result lazily at present.  The result is that there aren't many words that line up properly with dictionary entries.  Some examples include 司法書士、成功報酬、共有名義、贈与税、and the list goes on.  There are simple words that are not being unconjugated and there are compound words that are being tokenized too far.  I happen to think that MeCab and EDICT are both excellent projects and I could use them together much more effectively than I currently am to try and ensure proper boundaries when segmenting text.  For example, on a character level, I could load the EDICT keywords into a Trie data structure and greedily match patterns.  If I don't find anything, I could check to see if MeCab has resolved that token to an unconjugated/uninflected form that can be looked up.  That could definitely be improved upon, but it would be a large step in the right direction.
 2. Definitions.  I'm currently using EDICT.  It's great, and it's got a lot of miles left for an application like this, especially with improvements in text segmentation, but coming up with definitions... I'm open to suggestions.  Seriously.
 
-Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:<br/>
+#### Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:<br/>
 ✓ : Automate evaluation/production of high-context flashcard material<br/>
 ✗ : Segment text in a way that is optimally meaningful for an L2 learner<br/>
 ✗ : Have a really comprehensive dictionary<br/>
@@ -52,7 +52,7 @@ Ultimately, this is a meaningful step toward the complete automation of the flas
 ![image of srs program](images/basic_srs.png "Basic SRS")
 ![image of srs program with definitions](images/basic_srs_def_mode.png "Basic SRS w/defs")
 
-Other takeaways:
+#### Other takeaways:
 1. I'd like to start a conversation about the role of machine learning in second language acquisition
 2. I'd like to crowdsource Japanese text aggregation to scale this up from 20k tokens to, say, 70-80k
 3. I'd like to share my ideas on "atomizing" words/grammar/phrases in sentence flashcards
@@ -64,37 +64,34 @@ Examples of strong and weak contexts (according to my model)
 
 Japanese text from social media segmented with MeCab (20k tokens) on a deep stack of iterated dilated convolutional layers
 
-Word:	特許<br/>
-Strong:	特許	一般的には発明をしたら最初に __特許__ 出願をして、次にどこかに発表するという手順の方がいいです。最初に発表すると特許が認められなくなります。<br/>
-Weak:	特許	立派だと思います。むしろ介護は体力も必要な仕事ですから、男性の介護士は重宝されると思われます。…てか、なんでこの質問が「 __特許__ 」カテゴリ？<br/>
+Strong:	一般的には発明をしたら最初に __特許__ 出願をして、次にどこかに発表するという手順の方がいいです。最初に発表すると特許が認められなくなります。<br/>
+Weak:	立派だと思います。むしろ介護は体力も必要な仕事ですから、男性の介護士は重宝されると思われます。…てか、なんでこの質問が「 __特許__ 」カテゴリ？<br/>
 
-Word:	概念<br/>
-Strong:	概念	人間とロボットの関係という __概念__ はあるようですが、ロボット同士の関係はないようですね。人間には人間関係がある。ロボットにはロボット関係がない。<br/>
-Weak:	概念	基本的には同じものですが __概念__ が違うようです。ピクセルというのは点１つ分の長さです。つまり、１ピクセル×１ピクセルが１つの点になります。<br/>
+Strong:	人間とロボットの関係という __概念__ はあるようですが、ロボット同士の関係はないようですね。人間には人間関係がある。ロボットにはロボット関係がない。<br/>
+Weak:	基本的には同じものですが __概念__ が違うようです。ピクセルというのは点１つ分の長さです。つまり、１ピクセル×１ピクセルが１つの点になります。<br/>
 
-Word:	送金<br/>
-Strong:	送金	日本からオーストラリアの銀行口座に __送金__ する方法でもっとも手数料が掛からない方法はどうしたら良いでしょうか？<br/>
-Weak:	送金	パチンコのほうが許せるかな北朝鮮に __送金__ といってもいまいちピンとこないし。身近で被害を被っているタバコのほうがやめて欲しいです。<br/>
+Strong:	日本からオーストラリアの銀行口座に __送金__ する方法でもっとも手数料が掛からない方法はどうしたら良いでしょうか？<br/>
+Weak:	パチンコのほうが許せるかな北朝鮮に __送金__ といってもいまいちピンとこないし。身近で被害を被っているタバコのほうがやめて欲しいです。<br/>
 
 Examples of model preferences for "filling in the blank"
 
 English text from Arxiv papers segmented with BPE (20k tokens) on a shallow stack of BiLSTM layers
 
-	prompt:
-		darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].
-	answer:
-		. Similar to 
-	predictions:
-	0.109294474	. According to 
-	0.05470071	. For 
-	0.038690485	. Unlike 
-	0.013808575	. Compared to 
-	0.013448008	. Using 
-	0.011497075	. On 
-	0.00815414	. Based on 
-	0.008007415	. Following 
-	0.007719114	. In such 
-	0.005134958	. From 
+prompt:<br/>
+:	darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].<br/>
+answer:<br/>
+:	. Similar to <br/>
+predictions:<br/>
+0.109294474	. According to <br/>
+0.05470071	. For <br/>
+0.038690485	. Unlike <br/>
+0.013808575	. Compared to <br/>
+0.013448008	. Using <br/>
+0.011497075	. On <br/>
+0.00815414	. Based on <br/>
+0.008007415	. Following <br/>
+0.007719114	. In such <br/>
+0.005134958	. From <br/>
 
 	prompt:
 		provide a reward function. We present baseline policies trained using reinforcement learning for four different commercial robots in the six environments. We *****************modeling human motion results in better assistance and we compare the performance of different robots. Overall, we show that Assistive Gym is a promising tool for assistive robotics research.
