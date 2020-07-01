@@ -223,156 +223,155 @@ For example, I use regex and stuff when I'm tokenizing English and it works fine
 
 There are other methods for segmenting text, for example, WordPieces and stuff, but who cares?  It's basically fancy BPE and I'm going to pull my engineer card and say BPE is "good enough".
 
-	Step 3: Train a Masked Language Model
+### Step 3: Train a Masked Language Model
 
-		Depending on the language and application, a pre-trained language model may be available.  The devs over at Huggingface (https://huggingface.co/), for instance, have reimplemented and pre-trained a number of cutting-edge language models.  In this case, I decided to "roll my own" because it's useful self-study and because the task of estimating relative contextual strength is more forgiving than some other tasks in NLP.
+Depending on the language and application, a pre-trained language model may be available.  The devs over at Huggingface (https://huggingface.co/), for instance, have reimplemented and pre-trained a number of cutting-edge language models.  In this case, I decided to "roll my own" because it's useful self-study and because the task of estimating relative contextual strength is more forgiving than some other tasks in NLP.
 
-		3a) Model Design
+#### 3a) Model Design
 
-			The stated goal here is to build a model that, when conditioned on the context surrounding a masked token, can predict the value of the masked token with an acceptable degree of accuracy.  Andrej Karpathy wrote an iconic blog entry about the effectiveness of RNNs in language modeling (http://karpathy.github.io/2015/05/21/rnn-effectiveness/) and ELMo (https://arxiv.org/abs/1802.05365) is a recent example of the effectiveness of bidirectional recurrent-type layers in encoding relative positional information, which produces rich contextual embeddings that are great for downstream tasks and would be ideal for this task... but recurrent layers are slow at training and inference and I don't feel like waiting that long and, honestly, I haven't bothered to figure out self-attention well enough to implement a self-attentive model, so I'm using a convolutional network.  Besides, if you look sideways and squint a little, convolutions are also sort of doing the job of BiRNN and self-attentive models in the sense that they encode information about relative position, they have bidirectional receptive fields, and are basically using fixed attention within that receptive field.
+The stated goal here is to build a model that, when conditioned on the context surrounding a masked token, can predict the value of the masked token with an acceptable degree of accuracy.  Andrej Karpathy wrote an iconic blog entry about the effectiveness of RNNs in language modeling (http://karpathy.github.io/2015/05/21/rnn-effectiveness/) and ELMo (https://arxiv.org/abs/1802.05365) is a recent example of the effectiveness of bidirectional recurrent-type layers in encoding relative positional information, which produces rich contextual embeddings that are great for downstream tasks and would be ideal for this task... but recurrent layers are slow at training and inference and I don't feel like waiting that long and, honestly, I haven't bothered to figure out self-attention well enough to implement a self-attentive model, so I'm using a convolutional network.  Besides, if you look sideways and squint a little, convolutions are also sort of doing the job of BiRNN and self-attentive models in the sense that they encode information about relative position, they have bidirectional receptive fields, and are basically using fixed attention within that receptive field.
 
-			Building a model with the Keras functional API
+Building a model with the Keras functional API
 
-			```{python}
-			from keras.models import Model
-			from keras.layers import Input, Embedding, Dense, Conv1D
-			from keras.layers import Add, BatchNormalization, Activation
-			from keras.layers import GlobalMaxPooling1D, Multiply
-			from keras.initializers import RandomNormal
+```{python}
+from keras.models import Model
+from keras.layers import Input, Embedding, Dense, Conv1D
+from keras.layers import Add, BatchNormalization, Activation
+from keras.layers import GlobalMaxPooling1D, Multiply
+from keras.initializers import RandomNormal
 
-			def build_model(dimms, kernel_size, dilations):
+def build_model(dimms, kernel_size, dilations):
 
-				inputs = Input(shape=(input_size,))
-				embeddings = Embedding(len(charmap), dimms, input_length=input_size)(inputs)
+	inputs = Input(shape=(input_size,))
+	embeddings = Embedding(len(charmap), dimms, input_length=input_size)(inputs)
 
-				position = Input(shape=(input_size,1))
-				
-				x = embeddings
-				for dr in dilations:
-					y = Conv1D(filters=dimms, kernel_size=kernel_size, dilation_rate=dr, padding='same', kernel_initializer=RandomNormal(0,0.01))(x)
-					y = BatchNormalization()(y)
-					y = Activation('relu')(y)
-					x = Add()([x,y])
-
-				z = Multiply()([x, position])
-				
-				z = GlobalMaxPooling1D()(z)
-
-				outputs = Dense(len(charmap), activation='softmax')(z)
-				model = Model([inputs, position], outputs)
-				model.compile(loss='sparse_categorical_crossentropy',optimizer='adadelta',metrics=['accuracy'])
-				model.summary()
-
-				return model
-
-			for e in range(epochs):
-				features, positions, labels = generate_dataset(samples, comments, input_size, fmap, train_range, resample_frequency)
-				model.fit([features, positions],labels,batch_size=256,epochs=1,verbose=1)
-			```
-
-			Above is the general architecture I've learned to like from other projects.  The stack of 1D convolutions is pretty good for lots of NLP tasks.  The ReLU activation function is pretty much standard for anything with more than a few layers, I'm pretty sure I picked up the kernel_initializer, the BatchNormalization, and the ResNet-style residual connections from the AlphaGoZero paper (https://www.nature.com/articles/nature24270).  The idea of using iterated dilated convolutions came from the work of Strubell et al. 2017 (https://arxiv.org/abs/1702.02098) and from Kalchbrenner et al. 2016 (https://arxiv.org/abs/1610.10099).  I have actually used the TimeDistributed layer wrapper for this sort of sequential output, but in the interest of reducing memory requirements, I've opted to just tell the model where the masked token is with a one-hot array and to extract that position with Multiply() and GlobalMaxPooling1D() layers.  This also speeds things up quite a lot because doing softmax on 20,000 dimensional outputs is expensive so it's better to it once instead of "input_size" times.  The sparse_categorical_crossentropy also helps save memory when creating datasets as they don't get expanded until the batch is created... let's see... the Embedding layer is a big reason why this step is language-agnostic.  You'd need to find embeddings or create your own by doing PCA on a co-occurrence matrix or training a model like word2vec, but in this case, it's possible to just tack on a layer that learns embeddings of a specified dimensionality during training, so it's basically a TimeDistributed Dense layer.  I still use Adam for fine-tuning, but I've come to like AdaDelta for general training... and there's a neat paper by Smith et al. at Google Brain (https://arxiv.org/abs/1711.00489) showing that increasing the batch size is an effective way to fine-tune.
-
-			I know that dropout is a good regularizer.  I felt like I had enough data to train on to not need it in this case.  However, if I'd felt the need to use dropout, I'd have used SpatialDropout1D right after the Embedding layer and called it a day.
-
-			The open questions at this point are to figure out how the model performs as number of filters, number of layers, and rates of dilation are varied.
-
-			Experiments
-
-			Testing is required to narrow in on a suitable CNN architecture, so the scaled-down problem of predicting a missing character out of the most common 3000 Japanese characters was used to deciding what architecture to scale up for the problem of predicting a missing word out of 20,000 words.  Characters were resampled to ensure the most frequent 2400 characters (80%) were uniformly sampled.  Kernel size was fixed at 3 and the number of kernels, d, and the dilation rate, dr, and the number of layers were varied.
-
-			![area under the curve]()
-			![perplexity]()
-			Figure 1: AUC and Perplexity on a character level prediction task
-
-			Starting with 100d and undilated convolutions and varying the depth of the convolutional stack from 3 to 5 layers, we can see that there is almost no benefit to AUC or perplexity.  The large improvement obtained from increasing the dimensionality to 200d suggests that, while 100d and even 50d (according to some publication I can't remember) are fine for embedding sizes, 100d is too small to capture a rich context in the convolutional stack, itself.  Attempting to increase the receptive field of the undilated convolutions by going from 5 layers to 10 (in green) results in classic signs of overfitting, evidenced by poorer AUC and perplexity on the validation set as training continues.  Iterated dilations were tried in an effort to increase the receptive field without overfitting.  It worked pretty well, but I didn't let the IDCNN train long enough to demonstrate either that it wouldn't overfit or that it ultimately achieves better perplexity than the undilated 5 layer convolutional stack, but it does learn much more quickly, so I decided to move to fine-tuning.  The point at which fine-tuning begins is pretty obvious by the sudden improvement around 125 epochs on the maroon colored data.  Fine-tuning was done using Adam(lr=0.0001) and by increasing the batch size to 1024.
-
-			Convolutional stacks are actually pretty fast to train and Strubell et al. showed that they are also competitive with BiLSTM stacks on named entity recognition tasks (https://arxiv.org/abs/1702.02098).  In the same work, they note that the use of iterated dilated convolutions increases the receptive field of a convolutional stack exponentially with depth as opposed to linearly as in the case of standard convolutions.  A simple spreadsheet can help understand why this is the case.
-
-			![refs - fast and accurate - idcnn image.png]() 
-			![receptive field.png]()
-
-			The top image is from the Strubell paper and illustrates what it means to iterate dilations.  The bottom image shows the receptive fields of different networks, each with a kernel size of 3, but varying the number of layers and the dilation rates.  The idea of repeating a stack of dilation rates comes from the ByteNet paper and I like it because the four-layer IDCNN has an attention profile that appears to have "blind spots", whereas the eight-layer IDCNN has a much smoother attention profile across its receptive field.  That just seems nicer to me and I went with the eight-layer IDCNN for the scaled-up model.
-
-			![auc ppl of 20k model.png]()
-
-			Yay!  We have a decent looking model!  After training and fine-tuning, a perplexity of 105 was achieved on a dataset with 20,000 words in which 16,000 of them were uniformly sampled.  Not bad :)
-
-		3b) Resampling Source Text
-
-			I'd scraped enough text to make a useful "bench-scale" model with 20,000 tokens, so I didn't need to resort to using "out of vocabulary" tokens.  It would have been kind of tricky, anyway, since I'm using an embedding layer.  I guess I could have reserved like 1000 tokens and randomly sprinkled them in to replace oov tokens and just avoided sampling them for prediction, but that's a story for another day.
-
-			I started by using MeCab to segment roughly 13 million comments to build a frequency list of tokens.  Next, I decided 20k is a large enough number to be useful and a small enough number that it would be appropriate for my dataset.  I then resampled the comments such that only those 20k tokens are represented, leaving me with around 5 million comments for training.
-
-			The comments themselves are aligned in a linear array, delimited by '[SEG]' tokens.  An int16 numpy array and corresponding key:token:counts lookup table are saved as an intermediate for quick access.
-
-		3c) Resampling During Training
-
-			The frequency of use of words in a language decays exponentially.  This is known as Zipf's Law.  This is important to understand because machine learning algorithms are little cheaters and if you give them a shortcut, they'll take it.  In this case, that means if you randomly sample words to mask, your model can learn to use the most frequent 500 words and get 80% accuracy and just ignore the other 19,500.  A little hyperbolic, but I've found that resampling is important, so when I build my training data, I draw a random number and compare it with the frequency distribution to decide whether I should resample.  In this way, I ensure that, in this case, the most frequent 80% of words get sampled uniformly and Zipf's law takes over for the remaining 20%.  I end up uniformly sampling 16,000 words in this case and that has produced good results for me.
-
-			A corollary of Zipf's law is that if we want to get good representative use cases of uncommon words at ranks like 50k-60k, orders of magnitude more text is required.
-
-	Step 4: How can this model be used?
-
-		4a) Ranking Flashcards by Contextual Strength
-
-			The most immediate use of a model trained to fill in the blank is to rank contexts by likelihood.  In practice, if I wanted to rank contexts for the word "job", I would go to my dataset and collect every comment that contains the word "job", replace the word "job" with a '[MASK]' token, and then ask the model to predict the missing word.  We already know the word is "job", so we just check the likelihood corresponding to the word "job" and that's our score for contextual strength.  The higher the predicted likelihood of the correct word, the stronger the context.
-
-			Applications:
-
-				The way flashcard decks are made seems to be manual at the moment.  Someone goes out and manually curates example sentences and makes a public deck or, in my case, I read novels or something and try to find good contexts in the wild.  In any case, it seems like the way this is currently done involves a lot of manual effort.  This limits the number of flashcards available and, therefore, the number of contexts in which a word can be seen while reviewing flashcards -- typically, a word will be the target of either a single flashcard or a small number of flashcards.
-
-				The process of collecting utterances from social media can be automated.  This means, in principle, we can have as many examples as we want for virtually any word or phrase we're likely to care about.  These examples will naturally vary in quality, but it would take a monstrous effort to sort them all out.  A well-trained model could sort them out for us and this might constitute a shift in how people review flashcards.  For example, instead of having 1 or 2 flashcards to demonstrate a word or phrase, why not have 100?  While we're at it, since we can have reasonable confidence that the model is able to present us with high quality flashcards, why not use the SRS algorithm to keep track of individual words or phrases and randomly select a high quality example when it comes time to review that word or phrase again?
-
-				This would do a few things:
-
-					1) It would enable learners to see a larger number of natural contexts for words of interest instead of memorizing one or two.
-
-					2) i+1 on steroids.  It's commonly accepted that the most efficient way to pick up new concepts is one at a time.  If an L2 learner knows "i" concepts, then he/she will benefit most from seeing a flashcard that represents i+1 concepts.  The YouTuber MattVsJapan (https://www.youtube.com/user/MATTvsJapan/videos) is involved with (created?) the MorphMan project which is meant to reorder flashcards to enforce this very constraint.  If 100+ high quality examples are available for each of tens of thousands of words/phrases in the target language, then a flashcard review program could dynamically build a "whitelist" of the terms appearing in mature flashcards, search through a few million flashcards (100 for each of 10k+ words) for ones meeting the "i+1" criterion, then show them in an order that enables the learner to review words that are due before preferentially filling in the highest frequency gaps in the learner's knowledge, for example.  Lots of options become available.
-
-					3) Enable indefinite scaling, in principle.  Flashcards should be part of a balanced diet.  Learners should obviously be doing plenty of reading, listening, and socializing in their target language and a tool like this could help facilitate that by compartmentalizing the process of finding and acquiring vocabulary, thereby making it voluntary/unnecessary to actively search for new vocabulary and freeing the learner up to engage in more enjoyable language related activities.
-
-		4b) Selecting Distractors
-
-			In multiple choice questions, distractors are the other answers that are meant to sound plausible and distract you from the answer.  The test-taker is then meant to be discerning enough to tell the difference and select the right answer anyway.  Some work has been done on distractor generation (https://arxiv.org/abs/2004.09853) and there are basically two pretty straightforward ways of attempting distractor generation in this case.
-
-			4b1) Using the trained model, itself. A pretty sweet bonus of having trained a language model is that we can use the same language model to produce a high-quality set of distractors.  This leverages the fact that the language model is relying on having learned embeddings at the input layer and on having generated contextual embeddings right before the classification layer.  Those contextual embeddings, as mentioned in reference to the ELMo and BERT models, are there to map onto an expected value, but the values aren't one-hot.  These input and output level embedding layers are basically doing dimensionality reduction, which is kind of also the same thing as lossy compression.  This is achieved, in this case, by grouping things in a vector space on the basis of semantic similarity, which means that, instead of merely asking the model for the argmax of the predicted value, we should be able to take, say, the top 10 or 20 predictions and they should be plausible candidates for the fill in the blank problem.  In other words, they'll probably make good distractors, which allows this to be used in two modes: recognition mode and multiple-choice mode.
-
-			The following is an admittedly cherry-picked example, but it demonstrates the plausibility of the approach.  The answer itself is a day of the week and the distractors are other days of the week, holidays, times of day, and months of the year... so they're all time-related, and could be randomly sampled at quiz time to build a novel set of multiple choice answers.  The second example is actually pretty entertaining, lol... the model seems to think this person is hanging out in some questionable joints :D
-
-			Note: Japanese text doesn't have spaces and I don't endorse using spaces in flashcards.  The following is a tokenized view to show how the model sees the text and to facilitate identification of i+1 cards by already having the flashcard tokenized.  It's pretty much copy/pasted from the million+ examples file I uploaded (with minimal editing).
-
-			Answer: 土曜日
-			Question: [SEG] 今週 の 日曜日 と 言っ たら １ ７ 日 です ね 。 建前 から 言っ たら 一 週 は 日曜日 から 始まる こと に なっ て い ます が 、 最近 で は ビジネス 手帳 を 中心 に カレンダー の 多く が 、 週 は 月曜日 から 始まっ て [MASK] ・ 日曜日 で 終わる 表記 の もの が 主流 です 。 [SEG] [SEG]
-			Distractors:
-			土曜日 0.3185852 土 0.11403965 土曜 0.07522853 祝日 0.05303336 月曜日 0.049625997 あさって 0.029116696
-			月曜 0.025645258 火曜日 0.016687687 夕方 0.016655127 １１月 0.015224018
-
-			Answer: 居酒屋
-			Question: [SEG] 私 が 働い て い た スポーツ ジム は 結構 、 みんな 仲良く て 飲み 会 とか ２ ヶ月 に １ 回 くらい で やっ て まし た よ 。 でも １ 番 出会い が 多い の は 居酒屋 だ と 思い ます 。 私 の 周り は [MASK] の バイト で 知り合っ た 彼氏 が 多かっ た ので 。 [SEG] [SEG] [SEG]	
-			Distractors:
-			スナック 0.25561944 飲み屋 0.1136522 サクラ 0.053267717 居酒屋 0.045296103 スタバ 0.035692472 キャバクラ 0.031131526 水商売 0.0271534 酒屋 0.024966074 ファミレス 0.017192462 ゲームセンター 0.014619579
-
-			4b2) A second method for generating distractors would be to generate embeddings with a cooccurrence matrix/PCA and randomly sample nearest neighbors or something, but that would just mean sampling static vectors and would be less context-appropriate than using the model.
-
-			Applications:
-
-				The ability to generate plausible distractors gives learners a more active option for testing recall.  My flashcards are typically passive.  I look at a block of text and decide whether I could read/understand it and self-evaluate, but all of the information is present and known to me all the time, so the recall itself is less active.  In the case of multiple choice, I would need to use context clues to eliminate some options and support others and, in that way, I'm more engaged in the review process and should be more strongly impressed as a result (literally me just conjecturing now).
-
-				So the learner could switch between passive and active quiz modes.  A technical consideration would be that in multiple choice mode, the learner isn't technically trying to guess "the right answer".  Instead, the learner would be trying to guess what the author originally wrote which I'm explicitly assuming is highly correlated with what is "correct".  Another technical consideration becomes apparent with pretty much all of the examples.  The model has produced answers that are so plausible they can't objectively be distinguished.  So things like these would need to be addressed before using multiple choice mode with confidence.
+	position = Input(shape=(input_size,1))
 	
-	Step 5: Notes and Future Work
+	x = embeddings
+	for dr in dilations:
+		y = Conv1D(filters=dimms, kernel_size=kernel_size, dilation_rate=dr, padding='same', kernel_initializer=RandomNormal(0,0.01))(x)
+		y = BatchNormalization()(y)
+		y = Activation('relu')(y)
+		x = Add()([x,y])
 
-		*	This isn't really suitable for complete beginners.  In order for the "i+1" stuff to really do its magic, you should ideally know a few thousand words.  That'd put you at least in the intermediate range.  The big appeal here is that this method will be useful for advanced learners, too, and while the tokenization and dictionary stuff aren't completely sorted out yet, they're still quite useful even in their current form, so an advanced learner could just modify the code to only show flashcards when dictionary entries are available and use it that way.
+	z = Multiply()([x, position])
+	
+	z = GlobalMaxPooling1D()(z)
 
-		*	Assuming the tokenization and dictionary lookup get sorted out, the human would effectively have been removed from the process of finding and creating flashcards and that'd shave off probably 90-95% of the manual effort involved in repping SRS.
+	outputs = Dense(len(charmap), activation='softmax')(z)
+	model = Model([inputs, position], outputs)
+	model.compile(loss='sparse_categorical_crossentropy',optimizer='adadelta',metrics=['accuracy'])
+	model.summary()
 
-		*	You can "atomize" your flashcards.  If the learner is only responsible for a single piece of information per flashcard, this greatly simplifies things.  The user no longer has to worry about forgetting other words that are incidental passengers on this flashcard and, at the same time, since the user is only tracking token performance and is looking up random "i+0" presentations at quiz-time for known tokens, it's now possible to have multiple sentence packs as drop-in replacements.  This can accommodate changes in themes (it's Harry Potter week?) and it can accommodate improvements in the machine learning algorithm without losing progress on known tokens.
+	return model
 
-		*	MattVsJapan on Youtube talks about priority lists with his/Yoga's MorphMan plugin to the popular Anki SRS program.  Such priority lists can be applied here as well, or the user can just learn things in order of frequency, or the user can just run away with some nice example sentences and do whatever he/she likes with them.
+for e in range(epochs):
+	features, positions, labels = generate_dataset(samples, comments, input_size, fmap, train_range, resample_frequency)
+	model.fit([features, positions],labels,batch_size=256,epochs=1,verbose=1)
+```
 
-		*	In order to define a starting off point, the user can specify a percentile and assert that he/she knows k% of the language by frequency and can start by studying material above that threshold or the user can supply a tokenized novel or blog or any other body of text and say "I can read all of this" to establish a baseline upon which the "i+1" recommendation algorithm can begin to work.
+Above is the general architecture I've learned to like from other projects.  The stack of 1D convolutions is pretty good for lots of NLP tasks.  The ReLU activation function is pretty much standard for anything with more than a few layers, I'm pretty sure I picked up the kernel_initializer, the BatchNormalization, and the ResNet-style residual connections from the AlphaGoZero paper (https://www.nature.com/articles/nature24270).  The idea of using iterated dilated convolutions came from the work of Strubell et al. 2017 (https://arxiv.org/abs/1702.02098) and from Kalchbrenner et al. 2016 (https://arxiv.org/abs/1610.10099).  I have actually used the TimeDistributed layer wrapper for this sort of sequential output, but in the interest of reducing memory requirements, I've opted to just tell the model where the masked token is with a one-hot array and to extract that position with Multiply() and GlobalMaxPooling1D() layers.  This also speeds things up quite a lot because doing softmax on 20,000 dimensional outputs is expensive so it's better to it once instead of "input_size" times.  The sparse_categorical_crossentropy also helps save memory when creating datasets as they don't get expanded until the batch is created... let's see... the Embedding layer is a big reason why this step is language-agnostic.  You'd need to find embeddings or create your own by doing PCA on a co-occurrence matrix or training a model like word2vec, but in this case, it's possible to just tack on a layer that learns embeddings of a specified dimensionality during training, so it's basically a TimeDistributed Dense layer.  I still use Adam for fine-tuning, but I've come to like AdaDelta for general training... and there's a neat paper by Smith et al. at Google Brain (https://arxiv.org/abs/1711.00489) showing that increasing the batch size is an effective way to fine-tune.
 
-		*	With a method like this, I'm basically reminded of the OpenAI paper Language Models are Unsupervised Multitask Learners linked at their github (https://github.com/openai/gpt-2).  In this sense, if a language model is supplied with, say, a biology textbook, then a user could generate semantic embeddings/use knn and make some fill in the blank study material with a language model like this!  For that, I'd probably find a pre-trained LM.  They're typically pre-trained on stuff like Wikipedia anyway :)
+I know that dropout is a good regularizer.  I felt like I had enough data to train on to not need it in this case.  However, if I'd felt the need to use dropout, I'd have used SpatialDropout1D right after the Embedding layer and called it a day.
+
+The open questions at this point are to figure out how the model performs as number of filters, number of layers, and rates of dilation are varied.
+
+##### Experiments
+
+Testing is required to narrow in on a suitable CNN architecture, so the scaled-down problem of predicting a missing character out of the most common 3000 Japanese characters was used to deciding what architecture to scale up for the problem of predicting a missing word out of 20,000 words.  Characters were resampled to ensure the most frequent 2400 characters (80%) were uniformly sampled.  Kernel size was fixed at 3 and the number of kernels, d, and the dilation rate, dr, and the number of layers were varied.
+
+![area under the curve](images/char_lvl_design_auc.png "Char Level: Area Under Curve")
+![perplexity](images/char_lvl_design_ppl.png "Char Level: Perplexity")
+Figure 1: AUC and Perplexity on a character level prediction task
+
+Starting with 100d and undilated convolutions and varying the depth of the convolutional stack from 3 to 5 layers, we can see that there is almost no benefit to AUC or perplexity.  The large improvement obtained from increasing the dimensionality to 200d suggests that, while 100d and even 50d (according to some publication I can't remember) are fine for embedding sizes, 100d is too small to capture a rich context in the convolutional stack, itself.  Attempting to increase the receptive field of the undilated convolutions by going from 5 layers to 10 (in green) results in classic signs of overfitting, evidenced by poorer AUC and perplexity on the validation set as training continues.  Iterated dilations were tried in an effort to increase the receptive field without overfitting.  It worked pretty well, but I didn't let the IDCNN train long enough to demonstrate either that it wouldn't overfit or that it ultimately achieves better perplexity than the undilated 5 layer convolutional stack, but it does learn much more quickly, so I decided to move to fine-tuning.  The point at which fine-tuning begins is pretty obvious by the sudden improvement around 125 epochs on the maroon colored data.  Fine-tuning was done using Adam(lr=0.0001) and by increasing the batch size to 1024.
+
+Convolutional stacks are actually pretty fast to train and Strubell et al. showed that they are also competitive with BiLSTM stacks on named entity recognition tasks (https://arxiv.org/abs/1702.02098).  In the same work, they note that the use of iterated dilated convolutions increases the receptive field of a convolutional stack exponentially with depth as opposed to linearly as in the case of standard convolutions.  A simple spreadsheet can help understand why this is the case.
+
+![idcnn image from Strubell et al](images/idcnn_strubell.png "IDCNN - Strubell et al") 
+![receptive field](images/receptive_field.png "Receptive Field")
+
+The top image is from the Strubell paper and illustrates what it means to iterate dilations.  The bottom image shows the receptive fields of different networks, each with a kernel size of 3, but varying the number of layers and the dilation rates.  The idea of repeating a stack of dilation rates comes from the ByteNet paper and I like it because the four-layer IDCNN has an attention profile that appears to have "blind spots", whereas the eight-layer IDCNN has a much smoother attention profile across its receptive field.  That just seems nicer to me and I went with the eight-layer IDCNN for the scaled-up model.
+
+![auc ppl of final model](images/auc_ppl_final.png "AUC PPL Final")
+
+Yay!  We have a decent looking model!  After training and fine-tuning, a perplexity of 105 was achieved on a dataset with 20,000 words in which 16,000 of them were uniformly sampled.  Not bad :)
+
+#### 3b) Resampling Source Text
+
+I'd scraped enough text to make a useful "bench-scale" model with 20,000 tokens, so I didn't need to resort to using "out of vocabulary" tokens.  It would have been kind of tricky, anyway, since I'm using an embedding layer.  I guess I could have reserved like 1000 tokens and randomly sprinkled them in to replace oov tokens and just avoided sampling them for prediction, but that's a story for another day.
+
+I started by using MeCab to segment roughly 13 million comments to build a frequency list of tokens.  Next, I decided 20k is a large enough number to be useful and a small enough number that it would be appropriate for my dataset.  I then resampled the comments such that only those 20k tokens are represented, leaving me with around 5 million comments for training.
+
+The comments themselves are aligned in a linear array, delimited by '[SEG]' tokens.  An int16 numpy array and corresponding key:token:counts lookup table are saved as an intermediate for quick access.
+
+#### 3c) Resampling During Training
+
+The frequency of use of words in a language decays exponentially.  This is known as Zipf's Law.  This is important to understand because machine learning algorithms are little cheaters and if you give them a shortcut, they'll take it.  In this case, that means if you randomly sample words to mask, your model can learn to use the most frequent 500 words and get 80% accuracy and just ignore the other 19,500.  A little hyperbolic, but I've found that resampling is important, so when I build my training data, I draw a random number and compare it with the frequency distribution to decide whether I should resample.  In this way, I ensure that, in this case, the most frequent 80% of words get sampled uniformly and Zipf's law takes over for the remaining 20%.  I end up uniformly sampling 16,000 words in this case and that has produced good results for me.
+
+A corollary of Zipf's law is that if we want to get good representative use cases of uncommon words at ranks like 50k-60k, orders of magnitude more text is required.
+
+### Step 4: How can this model be used?
+
+#### 4a) Ranking Flashcards by Contextual Strength
+
+The most immediate use of a model trained to fill in the blank is to rank contexts by likelihood.  In practice, if I wanted to rank contexts for the word "job", I would go to my dataset and collect every comment that contains the word "job", replace the word "job" with a '[MASK]' token, and then ask the model to predict the missing word.  We already know the word is "job", so we just check the likelihood corresponding to the word "job" and that's our score for contextual strength.  The higher the predicted likelihood of the correct word, the stronger the context.
+
+##### Applications:
+
+The way flashcard decks are made seems to be manual at the moment.  Someone goes out and manually curates example sentences and makes a public deck or, in my case, I read novels or something and try to find good contexts in the wild.  In any case, it seems like the way this is currently done involves a lot of manual effort.  This limits the number of flashcards available and, therefore, the number of contexts in which a word can be seen while reviewing flashcards -- typically, a word will be the target of either a single flashcard or a small number of flashcards.
+
+The process of collecting utterances from social media can be automated.  This means, in principle, we can have as many examples as we want for virtually any word or phrase we're likely to care about.  These examples will naturally vary in quality, but it would take a monstrous effort to sort them all out.  A well-trained model could sort them out for us and this might constitute a shift in how people review flashcards.  For example, instead of having 1 or 2 flashcards to demonstrate a word or phrase, why not have 100?  While we're at it, since we can have reasonable confidence that the model is able to present us with high quality flashcards, why not use the SRS algorithm to keep track of individual words or phrases and randomly select a high quality example when it comes time to review that word or phrase again?
+
+This would do a few things:
+
+1. It would enable learners to see a larger number of natural contexts for words of interest instead of memorizing one or two.
+
+2. i+1 on steroids.  It's commonly accepted that the most efficient way to pick up new concepts is one at a time.  If an L2 learner knows "i" concepts, then he/she will benefit most from seeing a flashcard that represents i+1 concepts.  The YouTuber MattVsJapan (https://www.youtube.com/user/MATTvsJapan/videos) is involved with (created?) the MorphMan project which is meant to reorder flashcards to enforce this very constraint.  If 100+ high quality examples are available for each of tens of thousands of words/phrases in the target language, then a flashcard review program could dynamically build a "whitelist" of the terms appearing in mature flashcards, search through a few million flashcards (100 for each of 10k+ words) for ones meeting the "i+1" criterion, then show them in an order that enables the learner to review words that are due before preferentially filling in the highest frequency gaps in the learner's knowledge, for example.  Lots of options become available.
+
+3. Enable indefinite scaling, in principle.  Flashcards should be part of a balanced diet.  Learners should obviously be doing plenty of reading, listening, and socializing in their target language and a tool like this could help facilitate that by compartmentalizing the process of finding and acquiring vocabulary, thereby making it voluntary/unnecessary to actively search for new vocabulary and freeing the learner up to engage in more enjoyable language related activities.
+
+#### 4b) Selecting Distractors
+
+In multiple choice questions, distractors are the other answers that are meant to sound plausible and distract you from the answer.  The test-taker is then meant to be discerning enough to tell the difference and select the right answer anyway.  Some work has been done on distractor generation (https://arxiv.org/abs/2004.09853) and there are basically two pretty straightforward ways of attempting distractor generation in this case.
+
+* Using the trained model, itself. A pretty sweet bonus of having trained a language model is that we can use the same language model to produce a high-quality set of distractors.  This leverages the fact that the language model is relying on having learned embeddings at the input layer and on having generated contextual embeddings right before the classification layer.  Those contextual embeddings, as mentioned in reference to the ELMo and BERT models, are there to map onto an expected value, but the values aren't one-hot.  These input and output level embedding layers are basically doing dimensionality reduction, which is kind of also the same thing as lossy compression.  This is achieved, in this case, by grouping things in a vector space on the basis of semantic similarity, which means that, instead of merely asking the model for the argmax of the predicted value, we should be able to take, say, the top 10 or 20 predictions and they should be plausible candidates for the fill in the blank problem.  In other words, they'll probably make good distractors, which allows this to be used in two modes: recognition mode and multiple-choice mode.
+
+The following is an admittedly cherry-picked example, but it demonstrates the plausibility of the approach.  The answer itself is a day of the week and the distractors are other days of the week, holidays, times of day, and months of the year... so they're all time-related, and could be randomly sampled at quiz time to build a novel set of multiple choice answers.  The second example is actually pretty entertaining, lol... the model seems to think this person is hanging out in some questionable joints :D
+
+Note: Japanese text doesn't have spaces and I don't endorse using spaces in flashcards.  The following is a tokenized view to show how the model sees the text and to facilitate identification of i+1 cards by already having the flashcard tokenized.  It's pretty much copy/pasted from the million+ examples file I uploaded (with minimal editing).
+
+Answer: 土曜日
+Question: [SEG] 今週 の 日曜日 と 言っ たら １ ７ 日 です ね 。 建前 から 言っ たら 一 週 は 日曜日 から 始まる こと に なっ て い ます が 、 最近 で は ビジネス 手帳 を 中心 に カレンダー の 多く が 、 週 は 月曜日 から 始まっ て [MASK] ・ 日曜日 で 終わる 表記 の もの が 主流 です 。 [SEG] [SEG]
+Distractors:
+土曜日 0.3185852 土 0.11403965 土曜 0.07522853 祝日 0.05303336 月曜日 0.049625997 あさって 0.029116696 月曜 0.025645258 火曜日 0.016687687 夕方 0.016655127 １１月 0.015224018
+
+Answer: 居酒屋
+Question: [SEG] 私 が 働い て い た スポーツ ジム は 結構 、 みんな 仲良く て 飲み 会 とか ２ ヶ月 に １ 回 くらい で やっ て まし た よ 。 でも １ 番 出会い が 多い の は 居酒屋 だ と 思い ます 。 私 の 周り は [MASK] の バイト で 知り合っ た 彼氏 が 多かっ た ので 。 [SEG] [SEG] [SEG]	
+Distractors:
+スナック 0.25561944 飲み屋 0.1136522 サクラ 0.053267717 居酒屋 0.045296103 スタバ 0.035692472 キャバクラ 0.031131526 水商売 0.0271534 酒屋 0.024966074 ファミレス 0.017192462 ゲームセンター 0.014619579
+
+* A second method for generating distractors would be to generate embeddings with a cooccurrence matrix/PCA and randomly sample nearest neighbors or something, but that would just mean sampling static vectors and would be less context-appropriate than using the model.
+
+##### Applications:
+
+The ability to generate plausible distractors gives learners a more active option for testing recall.  My flashcards are typically passive.  I look at a block of text and decide whether I could read/understand it and self-evaluate, but all of the information is present and known to me all the time, so the recall itself is less active.  In the case of multiple choice, I would need to use context clues to eliminate some options and support others and, in that way, I'm more engaged in the review process and should be more strongly impressed as a result (literally me just conjecturing now).
+
+So the learner could switch between passive and active quiz modes.  A technical consideration would be that in multiple choice mode, the learner isn't technically trying to guess "the right answer".  Instead, the learner would be trying to guess what the author originally wrote which I'm explicitly assuming is highly correlated with what is "correct".  Another technical consideration becomes apparent with pretty much all of the examples.  The model has produced answers that are so plausible they can't objectively be distinguished.  So things like these would need to be addressed before using multiple choice mode with confidence.
+	
+### Step 5: Notes and Future Work
+
+* This isn't really suitable for complete beginners.  In order for the "i+1" stuff to really do its magic, you should ideally know a few thousand words.  That'd put you at least in the intermediate range.  The big appeal here is that this method will be useful for advanced learners, too, and while the tokenization and dictionary stuff aren't completely sorted out yet, they're still quite useful even in their current form, so an advanced learner could just modify the code to only show flashcards when dictionary entries are available and use it that way.
+
+* Assuming the tokenization and dictionary lookup get sorted out, the human would effectively have been removed from the process of finding and creating flashcards and that'd shave off probably 90-95% of the manual effort involved in repping SRS.
+
+* You can "atomize" your flashcards.  If the learner is only responsible for a single piece of information per flashcard, this greatly simplifies things.  The user no longer has to worry about forgetting other words that are incidental passengers on this flashcard and, at the same time, since the user is only tracking token performance and is looking up random "i+0" presentations at quiz-time for known tokens, it's now possible to have multiple sentence packs as drop-in replacements.  This can accommodate changes in themes (it's Harry Potter week?) and it can accommodate improvements in the machine learning algorithm without losing progress on known tokens.
+
+* MattVsJapan on Youtube talks about priority lists with his/Yoga's MorphMan plugin to the popular Anki SRS program.  Such priority lists can be applied here as well, or the user can just learn things in order of frequency, or the user can just run away with some nice example sentences and do whatever he/she likes with them.
+
+* In order to define a starting off point, the user can specify a percentile and assert that he/she knows k% of the language by frequency and can start by studying material above that threshold or the user can supply a tokenized novel or blog or any other body of text and say "I can read all of this" to establish a baseline upon which the "i+1" recommendation algorithm can begin to work.
+
+* With a method like this, I'm basically reminded of the OpenAI paper Language Models are Unsupervised Multitask Learners linked at their github (https://github.com/openai/gpt-2).  In this sense, if a language model is supplied with, say, a biology textbook, then a user could generate semantic embeddings/use knn and make some fill in the blank study material with a language model like this!  For that, I'd probably find a pre-trained LM.  They're typically pre-trained on stuff like Wikipedia anyway :)
 
 Post...face?
 
