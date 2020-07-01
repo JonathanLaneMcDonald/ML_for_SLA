@@ -20,14 +20,15 @@ I was reading the SpanBERT paper (https://arxiv.org/abs/1907.10529) one day and 
 
 A simple language model was trained to "fill in the blank" using text from Japanese social media segmented with the MeCab (https://pypi.org/project/mecab-python3/) morphological analyzer.  This model was trained on over 300 million tokens, representing 20,000 unique words.  Resampling was done to ensure that the most frequently occurring 16,000 words were uniformly sampled.  A perplexity of 105 was achieved on the validation set after fine-tuning.  Over 1 million example contexts are available for download, representing the 100 strongest contexts (according to my language model) of over 11,000 "words" (according to MeCab).
 
-#### Key Points:
-##### In Principle:
+### Key Points:
+
+#### In Principle:
 Having a strong language model that can sift through a large body of text looking for the best examples means we basically have a reliable source of high-quality examples for virtually all commonly used words and phrases, which means:
 1. We can do "i+1" on steroids because, with so many examples, many will exist where the new word is the only unknown.
 2. Because the availability of high-quality "i+1" flashcards is so high, we can divorce the new word from its presentation and display it in a random presentation at test time.  This means the learner is exposed to a wider range of contexts, collocations, and usages.
 3. Because the language model can be scaled with the size of the body of text, we can divorce the process of acquiring new vocabulary from the process of immersion, itself... or at least make it voluntary.  This is because a simple frequency list can be used to prioritize new words and because the model can be scaled to learn the usages of many tens of thousands of words, keeping even the most diligent learner busy for years.
 
-##### In Practice:
+#### In Practice:
 I've written a simple SRS interface (pictured below) with a very simple scheduling algorithm to test the assumptions laid out above.  Just some basic stuff about the interface:
 *	it's one flashcard per line
 *	the red word in each line is the target word and is the only thing the user is responsible for knowning
@@ -38,17 +39,17 @@ So I've been busy testing my assumptions and I've found that:
 2. The "i+1" thing is way stronger than I'd expected.  I've only got around 2600 words "known" right now and I've already got over 5000 unique words available in "i+1" contexts, so that's actually a lot better than I was expecting.
 3. I'm satisfied that the model can be scaled with more text and I'm very happy with the results I've had so far allowing the SRS to select random "i+1" presentations for me and selecting "i+0" presentations for "known" words when it's time to quiz them.  I'm happy that it'll all scale and to let it do its thing, but...
 
-##### Technical Challenges:
+#### Technical Challenges:
 1. Text segmentation.  The model can be as good as you like at learning relationships between tokens, but if the text is not properly tokenized, you'll get situations like I'm seeing in the second image, below.  The tokenization is being done by MeCab and I'm just using the result lazily at present.  The result is that there aren't many words that line up properly with dictionary entries.  Some examples include 司法書士、成功報酬、共有名義、贈与税、and the list goes on.  There are simple words that are not being unconjugated and there are compound words that are being tokenized too far.  I happen to think that MeCab and EDICT are both excellent projects and I could use them together much more effectively than I currently am to try and ensure proper boundaries when segmenting text.  For example, on a character level, I could load the EDICT keywords into a Trie data structure and greedily match patterns.  If I don't find anything, I could check to see if MeCab has resolved that token to an unconjugated/uninflected form that can be looked up.  That could definitely be improved upon, but it would be a large step in the right direction.
 2. Definitions.  I'm currently using EDICT.  It's great, and it's got a lot of miles left for an application like this, especially with improvements in text segmentation, but coming up with definitions... I'm open to suggestions.  Seriously.
 
-#### Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:
-✓ : Automate evaluation/production of high-context flashcard material
-✗ : Segment text in a way that is optimally meaningful for an L2 learner
-✗ : Have a really comprehensive dictionary
+### Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:
+✓ : Automate evaluation/production of high-context flashcard material<br/>
+✗ : Segment text in a way that is optimally meaningful for an L2 learner<br/>
+✗ : Have a really comprehensive dictionary<br/>
 
-![image of srs program](/basic_srs.png "Basic SRS")
-![image of srs program with definitions](/basic_srs_def_mode.png "Basic SRS w/defs")
+![image of srs program](images/basic_srs.png "Basic SRS")
+![image of srs program with definitions](images/basic_srs_def_mode.png "Basic SRS w/defs")
 
 	Other takeaways:
 		1) I'd like to start a conversation about the role of machine learning in second language acquisition
