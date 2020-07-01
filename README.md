@@ -44,11 +44,6 @@ So I've been busy testing my assumptions and I've found that:
 1. Text segmentation.  The model can be as good as you like at learning relationships between tokens, but if the text is not properly tokenized, you'll get situations like I'm seeing in the second image, below.  The tokenization is being done by MeCab and I'm just using the result lazily at present.  The result is that there aren't many words that line up properly with dictionary entries.  Some examples include 司法書士、成功報酬、共有名義、贈与税、and the list goes on.  There are simple words that are not being unconjugated and there are compound words that are being tokenized too far.  I happen to think that MeCab and EDICT are both excellent projects and I could use them together much more effectively than I currently am to try and ensure proper boundaries when segmenting text.  For example, on a character level, I could load the EDICT keywords into a Trie data structure and greedily match patterns.  If I don't find anything, I could check to see if MeCab has resolved that token to an unconjugated/uninflected form that can be looked up.  That could definitely be improved upon, but it would be a large step in the right direction.
 2. Definitions.  I'm currently using EDICT.  It's great, and it's got a lot of miles left for an application like this, especially with improvements in text segmentation, but coming up with definitions... I'm open to suggestions.  Seriously.
 
-#### Ultimately, this is a meaningful step toward the complete automation of the flashcard generation process:<br/>
-✓ : Automate evaluation/production of high-context flashcard material<br/>
-✗ : Segment text in a way that is optimally meaningful for an L2 learner<br/>
-✗ : Have a really comprehensive dictionary<br/>
-
 ![image of srs program](images/basic_srs.png "Basic SRS")
 ![image of srs program with definitions](images/basic_srs_def_mode.png "Basic SRS w/defs")
 
@@ -78,148 +73,155 @@ Examples of model preferences for "filling in the blank"
 English text from Arxiv papers segmented with BPE (20k tokens) on a shallow stack of BiLSTM layers
 
 prompt:<br/>
-:	darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].<br/>
+darkweb that are not necessarily observables of the attacks for the organization but we try to measure the extent to which they can perform well over other measures*************this study, there have already been attempts to develop systems at scale that could predict the risk of systems by analyzing various sensors such as binary appearance of log files [8].<br/>
+
 answer:<br/>
-:	. Similar to <br/>
+. Similar to <br/>
+
 predictions:<br/>
-0.109294474	. According to <br/>
-0.05470071	. For <br/>
-0.038690485	. Unlike <br/>
-0.013808575	. Compared to <br/>
-0.013448008	. Using <br/>
-0.011497075	. On <br/>
-0.00815414	. Based on <br/>
-0.008007415	. Following <br/>
-0.007719114	. In such <br/>
-0.005134958	. From <br/>
+0.109294	. According to <br/>
+0.054700	. For <br/>
+0.038690	. Unlike <br/>
+0.013808	. Compared to <br/>
+0.013448	. Using <br/>
+0.011497	. On <br/>
+0.008154	. Based on <br/>
+0.008007	. Following <br/>
+0.007719	. In such <br/>
+0.005134	. From <br/>
 
-	prompt:
-		provide a reward function. We present baseline policies trained using reinforcement learning for four different commercial robots in the six environments. We *****************modeling human motion results in better assistance and we compare the performance of different robots. Overall, we show that Assistive Gym is a promising tool for assistive robotics research.
-	answer:
-		demonstrate that 
-	predictions:
-	0.09668377	note that 
-	0.033988427	found that 
-	0.03374812	believe that 
-	0.024705352	argue that 
-	0.02412532	show how 
-	0.02130807	demonstrated that 
-	0.017756354	expect 
-	0.014219382	know that 
-	0.010730732	notice that 
-	0.010415988	suggest that 
+prompt:<br/>
+provide a reward function. We present baseline policies trained using reinforcement learning for four different commercial robots in the six environments. We *****************modeling human motion results in better assistance and we compare the performance of different robots. Overall, we show that Assistive Gym is a promising tool for assistive robotics research.<br/>
 
-	prompt:
-		means that we need a criterion to know when our test data has covered all plausible situations. Our work not only focuses on a test ending criterion but on a *************testing criterion that lets us evaluate how much of the system's decision space a test suite covers, rather than how much of the possible scenarios have been covered, as different scenarios could lead to the same decisions.
-	answer:
-		more general 
-	predictions:
-	0.0029336014	fast 
-	0.0024056516	complex 
-	0.0022412534	behavioral 
-	0.0021178033	powerful 
-	0.0020651175	null 
-	0.0019631959	strong 
-	0.0016073828	consistent 
-	0.0015987481	simplified 
-	0.0014659748	sparse 
-	0.0013874066	secure 
+answer:<br/>
+demonstrate that <br/>
 
-General background on Second Language Acquisition (SLA) and my personal experience learning Japanese:
+predictions:<br/>
+0.096683	note that <br/>
+0.033988	found that <br/>
+0.033748	believe that <br/>
+0.024705	argue that <br/>
+0.024125	show how <br/>
+0.021308	demonstrated that <br/>
+0.017756	expect <br/>
+0.014219	know that <br/>
+0.010730	notice that <br/>
+0.010415	suggest that <br/>
 
-	Concepts
-	
-		Input Hypothesis: Your brain is smarter than you and language is about the most human thing there is, so if you get out of your brain's way and give it native material, it'll handle the details and you'll learn the language through seriously huge amounts of input with one caveat...
+prompt:<br/>
+means that we need a criterion to know when our test data has covered all plausible situations. Our work not only focuses on a test ending criterion but on a *************testing criterion that lets us evaluate how much of the system's decision space a test suite covers, rather than how much of the possible scenarios have been covered, as different scenarios could lead to the same decisions.<br/>
 
-		Comprehensible Input: The input has to be comprehensible.  The richer the context, the better.  The fewer unknowns, the better.  The logical conclusion is what is referred to as "i+1".  I show up knowing "i" things and then I see a single new piece of information (kanji/word/grammar/phrase/concept/collocation/etc.) and I'm in the maximally efficient environment for acquiring it because I'm learning a single new thing which is, ideally, strongly contextualized by a bunch of other stuff I already know.
+answer:<br/>
+more general <br/>
 
-		Extensive Reading/Listening: I'm going to read/listen to tons of stuff and whatever sticks, sticks.  I may be inclined to circle a word and come back later, but I'm mainly guessing on the fly.  Extensive practices like these seem more related to picking up nuance and building up semantic representations.  I spend almost all my time doing "extensive" things.
+predictions:<br/>
+0.002933	fast <br/>
+0.002405	complex <br/>
+0.002241	behavioral <br/>
+0.002117	powerful <br/>
+0.002065	null <br/>
+0.001963	strong <br/>
+0.001607	consistent <br/>
+0.001598	simplified <br/>
+0.001465	sparse <br/>
+0.001387	secure <br/>
 
-		Intensive Reading/Listening: I'm going to read/listen very carefully and fully understand the input.  I find intensive work to be time-consuming and not particularly enjoyable, so I pretty much only do it when I'm translating something.
+## General Background
+### Second Language Acquisition (SLA) and my personal experience learning Japanese:
 
-		Spaced Repetition: Reading/Listening to native material represents a systematic way in which a learner can encounter new material and the Spaced Repetition System (SRS) is a systematic way of reviewing and maintaining what has been encountered.
+#### Concepts
 
-	People
+* Input Hypothesis: Your brain is smarter than you and language is about the most human thing there is, so if you get out of your brain's way and give it native material, it'll handle the details and you'll learn the language through seriously huge amounts of input with one caveat...
 
-		Stephen Krashen: Professor/researcher/linguist.  Probably the most well-known (and first?) proponent of the Input Hypothesis and of Comprehensible Input.  Famously demonstrated the concept of Comprehensible Input decades ago in a video in which he spoke in German to describe a scene.  More recently gave an excellent talk entitled "Trends in Sustained Silent Reading" at the KOTESOL conference (2011) (https://www.youtube.com/watch?v=bJZEx3ibVDA) in which he recalled a study in which the subjects were two groups of school-aged children.  One group was specifically taught grammar and phonetics and the other group was instructed to engage in "sustained silent reading" of whatever they liked.  The sustained silent reading group did better on a grammar evaluation than the group that'd specifically studied grammar.  I'm sure Krashen has done loads of other interesting things, but that old video and the KOTESOL conference are the two things I know him for.
+* Comprehensible Input: The input has to be comprehensible.  The richer the context, the better.  The fewer unknowns, the better.  The logical conclusion is what is referred to as "i+1".  I show up knowing "i" things and then I see a single new piece of information (kanji/word/grammar/phrase/concept/collocation/etc.) and I'm in the maximally efficient environment for acquiring it because I'm learning a single new thing which is, ideally, strongly contextualized by a bunch of other stuff I already know.
 
-		Antimoon (http://www.antimoon.com/): Polish guys who used the Input Hypothesis and SRS to learn English and then wrote about it in English.  In the Japanese learning community, it seems like these were the guys who kind of proved the concept.
+* Extensive Reading/Listening: I'm going to read/listen to tons of stuff and whatever sticks, sticks.  I may be inclined to circle a word and come back later, but I'm mainly guessing on the fly.  Extensive practices like these seem more related to picking up nuance and building up semantic representations.  I spend almost all my time doing "extensive" things.
 
-		Ajatt (http://www.alljapaneseallthetime.com/blog/): A guy who writes under the pseudonym Katsumoto (勝元, "the beginning of winning :D") popularized the methods used by the guys at Antimoon and applied them to Japanese.  It was Katsumoto who first lead me down the rabbithole of massive input and SRS.
+* Intensive Reading/Listening: I'm going to read/listen very carefully and fully understand the input.  I find intensive work to be time-consuming and not particularly enjoyable, so I pretty much only do it when I'm translating something.
 
-		MATTvsJapan (https://www.youtube.com/user/MATTvsJapan/videos): A guy who reached a high level using the Ajatt method and who works with a friend of his (Yoga?) to make his own contributions through his YouTube channel and through projects like MorphMan; a project that primarily exists to reorder an existing body of flashcards to optimize the learner's exposure to new morphemes based on number of unknowns and morpheme frequency or user-specified priority -- I think... I might be wrong about that.
+* Spaced Repetition: Reading/Listening to native material represents a systematic way in which a learner can encounter new material and the Spaced Repetition System (SRS) is a systematic way of reviewing and maintaining what has been encountered.
 
-		To my knowledge, while a lot of work has been done with regard to methods, nobody has really focused on the bottleneck that is the manual effort involved in determining what constitutes a good presentation of a new word/phrase/concept/etc.  While I am of the opinion that making your own flashcards from stuff you've read is the most effective/rewarding way of doing flashcards, I also recognize that there's a huge cost involved in doing that.  I spent a few years of 2-3 hours/day on flashcards and it paid off, but I'm never going to put in that kind of time again... at the same time, I like the idea of studying again, so my focus has been on methods and making them more efficient.  I happen to be a software engineer with experience in machine learning and natural language processing, so this is really right up my alley.  But before I get to the juicy part (the methods :D), I'll drone on for a while about my personal experience with Japanese, but you can follow the neat indentation and just skip that whole section ;)
+#### People
 
-	My Learning Experience (Japanese)
+* Stephen Krashen: Professor/researcher/linguist.  Probably the most well-known (and first?) proponent of the Input Hypothesis and of Comprehensible Input.  Famously demonstrated the concept of Comprehensible Input decades ago in a video in which he spoke in German to describe a scene.  More recently gave an excellent talk entitled "Trends in Sustained Silent Reading" at the KOTESOL conference (2011) (https://www.youtube.com/watch?v=bJZEx3ibVDA) in which he recalled a study in which the subjects were two groups of school-aged children.  One group was specifically taught grammar and phonetics and the other group was instructed to engage in "sustained silent reading" of whatever they liked.  The sustained silent reading group did better on a grammar evaluation than the group that'd specifically studied grammar.  I'm sure Krashen has done loads of other interesting things, but that old video and the KOTESOL conference are the two things I know him for.
 
-		I got into Japanese for social reasons.  Best friend was into it in high school.  Lots of Japanese nationals in my university/soccer team/dorms/etc, so I had plenty of opportunity to be influenced and impressed and decided to learn the language.
+* Antimoon (http://www.antimoon.com/): Polish guys who used the Input Hypothesis and SRS to learn English and then wrote about it in English.  In the Japanese learning community, it seems like these were the guys who kind of proved the concept.
 
-		Undergrad: I had the typical experience.  I took Japanese at a university level for 3 years and made A's and B's all 6 semesters.  It doesn't count, though, because I remember listening to a song by BoA toward the end of those three years and not only could I not understand the lyrics... I couldn't tell if she was singing in Korean or Japanese!  I couldn't tell if this language was one I'd never heard before or if it was the one I'd been studying for 3 years at a university level.  That literally happened.
+* Ajatt (http://www.alljapaneseallthetime.com/blog/): A guy who writes under the pseudonym Katsumoto (勝元, "the beginning of winning :D") popularized the methods used by the guys at Antimoon and applied them to Japanese.  It was Katsumoto who first lead me down the rabbithole of massive input and SRS.
 
-		Ajatt: A friend (who was also studying Japanese) tells me about Ajatt.  In a few days, I consume the entire blog.  It all sounds plausible.  I'm amped!  I write my own SRS because I'm hard-headed like that, and I get busy with Remembering The Kanji and I strip-mine All About Particles.
+* MATTvsJapan (https://www.youtube.com/user/MATTvsJapan/videos): A guy who reached a high level using the Ajatt method and who works with a friend of his (Yoga?) to make his own contributions through his YouTube channel and through projects like MorphMan; a project that primarily exists to reorder an existing body of flashcards to optimize the learner's exposure to new morphemes based on number of unknowns and morpheme frequency or user-specified priority -- I think... I might be wrong about that.
 
-		Manga: Having mined RTK and All About Particles, I'm familiar with the meanings and appearances of a few thousand kanji and I have a base of probably 1000-2000 vocab, so to learn how to actually read the kanji, I read manga for a year - FMA, 進撃の巨人, Dragonball, Trigun, Claymore, etc. bunch of stuff.  I also read blogs like grapee.jp.  The big idea was that manga have furigana and the browser has plugins like rikaichan and yomichan that help with looking things up.  So I make flashcards and I'm off to the races.
+To my knowledge, while a lot of work has been done with regard to methods, nobody has really focused on the bottleneck that is the manual effort involved in determining what constitutes a good presentation of a new word/phrase/concept/etc.  While I am of the opinion that making your own flashcards from stuff you've read is the most effective/rewarding way of doing flashcards, I also recognize that there's a huge cost involved in doing that.  I spent a few years of 2-3 hours/day on flashcards and it paid off, but I'm never going to put in that kind of time again... at the same time, I like the idea of studying again, so my focus has been on methods and making them more efficient.  I happen to be a software engineer with experience in machine learning and natural language processing, so this is really right up my alley.  But before I get to the juicy part (the methods :D), I'll drone on for a while about my personal experience with Japanese, but you can follow the neat indentation and just skip that whole section ;)
 
-		Novels: After reading manga/websites for about a year, I get straight into novels for a few more years... mostly translated stuff like Harry Potter, Ender's Game, Hunger Games, etc. and a probably half a dozen natively Japanese titles.  I did a brief stint in light novels, but they're not easier.  They're too fantastical and unrelatable.  Speaking of relatability, that's the purpose for having started with translated stuff I was familiar with from English.  Much better at guessing and if I get lost, I can just skip that part without worrying about missing something important.
+#### My Learning Experience (Japanese)
 
-		Translation: I actually got around to translating chemical journal articles and patents for my research group.  My BS/MS/PhD are in chemistry/toxicology/materials :P, so there was lots of opportunity because labmates would find publications they couldn't read.  I ended up registered with an international translation firm for about a year before I started work as a software engineer.
+I got into Japanese for social reasons.  Best friend was into it in high school.  Lots of Japanese nationals in my university/soccer team/dorms/etc, so I had plenty of opportunity to be influenced and impressed and decided to learn the language.
 
-		In the end, my dissertation and the subsequent job hunt really distracted from my language study.  I'm only just getting back into it and I have to say my priorities have shifted.  I still like language learning and I'll continue doing it, but I'll never spend 2,3,4 hours a day doing it again.  However, if I can build a little app on my phone where I can rep while I'm on the can or while I've got some down time, I'd really like that.  Further to that point, the thing that really animated this whole process was the realization that I already have just a few tons of Japanese text and that I might be able to train a language model to sift through all that text and present to me all the best examples of whatever I want!  This is because modern language models are often evaluated using a metric called Perplexity which is literally just "how good is this model at predicting a missing word" whether that word is the next word in a sequence or some masked word in the middle of a text hardly matters.  That, and I'm a language nerd who just likes building things and collaborating with other language nerds, so let's build something!  I'll start by telling you what I've done so far.
+Undergrad: I had the typical experience.  I took Japanese at a university level for 3 years and made A's and B's all 6 semesters.  It doesn't count, though, because I remember listening to a song by BoA toward the end of those three years and not only could I not understand the lyrics... I couldn't tell if she was singing in Korean or Japanese!  I couldn't tell if this language was one I'd never heard before or if it was the one I'd been studying for 3 years at a university level.  That literally happened.
 
-Methods/Results:
+Ajatt: A friend (who was also studying Japanese) tells me about Ajatt.  In a few days, I consume the entire blog.  It all sounds plausible.  I'm amped!  I write my own SRS because I'm hard-headed like that, and I get busy with Remembering The Kanji and I strip-mine All About Particles.
 
-	Step 1: Build a corpus ;)
+Manga: Having mined RTK and All About Particles, I'm familiar with the meanings and appearances of a few thousand kanji and I have a base of probably 1000-2000 vocab, so to learn how to actually read the kanji, I read manga for a year - FMA, 進撃の巨人, Dragonball, Trigun, Claymore, etc. bunch of stuff.  I also read blogs like grapee.jp.  The big idea was that manga have furigana and the browser has plugins like rikaichan and yomichan that help with looking things up.  So I make flashcards and I'm off to the races.
 
-		You're going to want lots of text to train your language model.  I have around 7GB of raw text after cleaning up the initial 25GB which has translated to around 315 million tokens after resampling based on the 20,000 words I chose for my lexicon, but "real" language models train on vastly larger datasets... on the order of 10s-100s of billions of tokens (see Meena https://arxiv.org/abs/2001.09977 or GPT-3 https://arxiv.org/abs/2005.14165).
+Novels: After reading manga/websites for about a year, I get straight into novels for a few more years... mostly translated stuff like Harry Potter, Ender's Game, Hunger Games, etc. and a probably half a dozen natively Japanese titles.  I did a brief stint in light novels, but they're not easier.  They're too fantastical and unrelatable.  Speaking of relatability, that's the purpose for having started with translated stuff I was familiar with from English.  Much better at guessing and if I get lost, I can just skip that part without worrying about missing something important.
 
-	Step 2: Text Segmentation
+Translation: I actually got around to translating chemical journal articles and patents for my research group.  My BS/MS/PhD are in chemistry/toxicology/materials :P, so there was lots of opportunity because labmates would find publications they couldn't read.  I ended up registered with an international translation firm for about a year before I started work as a software engineer.
 
-		2a) Character-Level Segmentation
+In the end, my dissertation and the subsequent job hunt really distracted from my language study.  I'm only just getting back into it and I have to say my priorities have shifted.  I still like language learning and I'll continue doing it, but I'll never spend 2,3,4 hours a day doing it again.  However, if I can build a little app on my phone where I can rep while I'm on the can or while I've got some down time, I'd really like that.  Further to that point, the thing that really animated this whole process was the realization that I already have just a few tons of Japanese text and that I might be able to train a language model to sift through all that text and present to me all the best examples of whatever I want!  This is because modern language models are often evaluated using a metric called Perplexity which is literally just "how good is this model at predicting a missing word" whether that word is the next word in a sequence or some masked word in the middle of a text hardly matters.  That, and I'm a language nerd who just likes building things and collaborating with other language nerds, so let's build something!  I'll start by telling you what I've done so far.
 
-			This involves handling text as a sequence of characters.
+## Methods/Results:
 
-			Pros:
-				- It's easy to implement.  You don't need any tools or preparation.
-				- You can represent everything, so you don't have to worry about "out of vocabulary" tokens.
-				- Language-agnostic.  This segmentation method doesn't know or care what language it's dealing with.
+### Step 1: Build a corpus ;)
 
-			Cons:
-				- Characters, on their own, typically contain low information content compared with other segmentation methods, so it's harder to know how many concepts you're introducing in text and to uniformly sample them when training a language model.  I know that character level models perform well in PoS tagging, NER, and even in neural machine translation (ByteNet https://arxiv.org/abs/1610.10099), but I'm building a language model for a specific purpose and, honestly, I tried training a character level gap-filling model, but it didn't work as well for reconstructing multi-character spans and I didn't want to have to mess with using a Viterbi decoder to figure out what the predicted token was going to be.  It's way easier to just have a single gap and a softmax/argmax.
+You're going to want lots of text to train your language model.  I have around 7GB of raw text after cleaning up the initial 25GB which has translated to around 315 million tokens after resampling based on the 20,000 words I chose for my lexicon, but "real" language models train on vastly larger datasets... on the order of 10s-100s of billions of tokens (see Meena https://arxiv.org/abs/2001.09977 or GPT-3 https://arxiv.org/abs/2005.14165).
 
-		2b) Byte-Pair Encoding
+### Step 2: Text Segmentation
 
-			Byte-Pair Encoding (BPE) was first used for learning tokens for NLP in 2015 for a neural machine translation task (https://arxiv.org/abs/1508.07909) and was further popularized in the GPT-2 paper (https://openai.com/blog/better-language-models/).  BPE is a simple algorithm that builds up statistically significant patterns one merge at a time.  These statistically significant patterns are also linguistically significant and can work at the byte level or at the character level, which isn't always the same thing (https://arxiv.org/abs/1909.03341).
+#### 2a) Character-Level Segmentation
 
-			Pros:
-				- Learned tokens are highly entropic compared with character-level representations.  This is intuitive and is evidenced by the much lower perplexities that can be achieved per-token for character-level models.
-				- The number of tokens to be learned can be specificied.
-				- Learned sub-word units can help reduce "out of vocabulary" tokens, compared with word-level models.
-				- Language agnosticism.  Again, BPE doesn't care what language it's encoding.
+This involves handling text as a sequence of characters.
 
-			Cons:
-				- It can be time/memory consuming to perform on very large corpuses
-				- It introduces the possibility of "out of vocabulary" tokens, compared with character-level models.
-				- Learned tokens almost never segment text in a way that lends to dictionary look-up.  This is a problem for my application.
+Pros:
+- It's easy to implement.  You don't need any tools or preparation.
+- You can represent everything, so you don't have to worry about "out of vocabulary" tokens.
+- Language-agnostic.  This segmentation method doesn't know or care what language it's dealing with.
 
-		2c) Rule-Based Segmentation
+Cons:
+- Characters, on their own, typically contain low information content compared with other segmentation methods, so it's harder to know how many concepts you're introducing in text and to uniformly sample them when training a language model.  I know that character level models perform well in PoS tagging, NER, and even in neural machine translation (ByteNet https://arxiv.org/abs/1610.10099), but I'm building a language model for a specific purpose and, honestly, I tried training a character level gap-filling model, but it didn't work as well for reconstructing multi-character spans and I didn't want to have to mess with using a Viterbi decoder to figure out what the predicted token was going to be.  It's way easier to just have a single gap and a softmax/argmax.
 
-			Morphological analyzers like MeCab, in the case of Japanese, are typically developed in academia and are based on dictionaries and sets of rules.  These custom tools provide the most information about morphology, conjugation, part of speech, etc., and provide results that will usually appear in a dictionary.  In the case of Japanese, MeCab dovetails nicely with Jim Breen's EDICT project (http://nihongo.monash.edu/cgi-bin/wwwjdic?1C).
+#### 2b) Byte-Pair Encoding
 
-			Pros:
-				- Provides lots of information about tokens
-				- Segments along grammatically meaningful boundaries
-				- Tokens can be easily counted and are amenable to dictionary lookup
+Byte-Pair Encoding (BPE) was first used for learning tokens for NLP in 2015 for a neural machine translation task (https://arxiv.org/abs/1508.07909) and was further popularized in the GPT-2 paper (https://openai.com/blog/better-language-models/).  BPE is a simple algorithm that builds up statistically significant patterns one merge at a time.  These statistically significant patterns are also linguistically significant and can work at the byte level or at the character level, which isn't always the same thing (https://arxiv.org/abs/1909.03341).
 
-			Cons:
-				- Language dependence.
-				- I personally like BPE better ;) but I really appreciate being able to look things up!
-		
-		2d) Custom
+Pros:
+- Learned tokens are highly entropic compared with character-level representations.  This is intuitive and is evidenced by the much lower perplexities that can be achieved per-token for character-level models.
+- The number of tokens to be learned can be specificied.
+- Learned sub-word units can help reduce "out of vocabulary" tokens, compared with word-level models.
+- Language agnosticism.  Again, BPE doesn't care what language it's encoding.
 
-			For example, I use regex and stuff when I'm tokenizing English and it works fine.
+Cons:
+- It can be time/memory consuming to perform on very large corpuses
+- It introduces the possibility of "out of vocabulary" tokens, compared with character-level models.
+- Learned tokens almost never segment text in a way that lends to dictionary look-up.  This is a problem for my application.
 
-		There are other methods for segmenting text, for example, WordPieces and stuff, but who cares?  It's basically fancy BPE and I'm going to pull my engineer card and say BPE is "good enough".
+#### 2c) Rule-Based Segmentation
+
+Morphological analyzers like MeCab, in the case of Japanese, are typically developed in academia and are based on dictionaries and sets of rules.  These custom tools provide the most information about morphology, conjugation, part of speech, etc., and provide results that will usually appear in a dictionary.  In the case of Japanese, MeCab dovetails nicely with Jim Breen's EDICT project (http://nihongo.monash.edu/cgi-bin/wwwjdic?1C).
+
+Pros:
+- Provides lots of information about tokens
+- Segments along grammatically meaningful boundaries
+- Tokens can be easily counted and are amenable to dictionary lookup
+
+Cons:
+- Language dependence.
+- I personally like BPE better ;) but I really appreciate being able to look things up!
+
+#### 2d) Custom
+
+For example, I use regex and stuff when I'm tokenizing English and it works fine.
+
+There are other methods for segmenting text, for example, WordPieces and stuff, but who cares?  It's basically fancy BPE and I'm going to pull my engineer card and say BPE is "good enough".
 
 	Step 3: Train a Masked Language Model
 
