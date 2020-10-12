@@ -5,6 +5,7 @@ import unidic
 
 from fugashi import Tagger as FugashiTagger
 
+
 def length_test(edict):
 	"""Verify that the provided dictionary was properly tokenized by Fugashi
 
@@ -18,10 +19,11 @@ def length_test(edict):
 			lengthTest[len(word)] = 0
 		lengthTest[len(word)] += 1
 		if len(word) >= 4:
-			print (word)
-	print (sorted(lengthTest.items()))
+			print(word)
+	print(sorted(lengthTest.items()))
 
-def get_spans(tagged_spans, numbers_suck = True):
+
+def get_spans(tagged_spans, numbers_suck=True):
 	"""Receives an array of tuples from SequenceTagger and returns an array of contiguous spans"""
 
 	spans = []
@@ -43,7 +45,8 @@ def get_spans(tagged_spans, numbers_suck = True):
 	else:
 		return [x for x in spans if len(x)]
 
-def basic_trie_setup(edict, run_length_test = False):
+
+def basic_trie_setup(edict, run_length_test=False):
 	"""Receives a dictionary and initializes the taggers"""
 
 	# initialize the fugashi wrapper with unidic

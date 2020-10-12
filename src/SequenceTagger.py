@@ -1,18 +1,20 @@
-'''
+"""
 the main purpose is to tokenize and label documents using a dictionary of terms
-'''
+"""
 
 import numpy
+
 
 class TreeNode:
 	def __init__(self):
 		self.children = dict()
 		self.isTerminal = False
 
+
 class Tree:
 	"""Represents sequences in a tree for fast string matching"""
 
-	def __init__(self, arrayOfTokenized = []):
+	def __init__(self, arrayOfTokenized=[]):
 		self.root = TreeNode()
 		self.longest_key = 0
 
@@ -49,6 +51,7 @@ class Tree:
 					longest_match = t+1
 		return longest_match
 
+
 class SequenceTagger:
 	"""Provide higher level functionality by wrapping the Tree (Trie) datastructure"""
 
@@ -61,19 +64,19 @@ class SequenceTagger:
 	def getMaxKeyLength(self):
 		return self.tree.getMaxKeyLength()
 
-	def tagDocument(self, tokenizedDoc, boolean_result = False, return_labels = False):
+	def tagDocument(self, tokenizedDoc, boolean_result=False, return_labels=False):
 		"""Receive a sequence and use the built Tree to label subsequences"""
 
-		labels = numpy.zeros(len(tokenizedDoc),dtype=numpy.int)
+		labels = numpy.zeros(len(tokenizedDoc), dtype=numpy.int)
 
-		label_value = 1 # so we can resolve adjacent entities, should they occur adjacently
+		label_value = 1  # so we can resolve adjacent entities, should they occur adjacently
 
 		p = 0
 		while p < len(tokenizedDoc):
 			length = min(self.tree.getMaxKeyLength(), len(tokenizedDoc)-p)
 			matchLength = self.tree.getLongestMatch(tokenizedDoc[p:p+length])
 			if matchLength:
-				for i in range(p,p+matchLength):
+				for i in range(p, p+matchLength):
 					labels[i] = label_value
 				label_value += 1
 				p += matchLength
