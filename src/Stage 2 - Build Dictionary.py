@@ -2,6 +2,7 @@
 from TrieUtils import get_spans, basic_trie_setup
 
 # parse entries out of the utf-8 encoded version of edict and make a set out of the entries
+# edict.utf8 is a utf-8 encoded version of Jim Breen's EDICT project (http://ftp.monash.edu.au/pub/nihongo/)
 edict = {x.split('/')[0].split('[')[0] for x in open('edict.utf8', 'r', encoding='utf-8').read().split('\n') if len(x)}
 
 # provide that set of dictionary entries to set up the taggers
