@@ -3,9 +3,9 @@ import numpy as np
 from numpy.random import random, choice
 
 from concrete import SampleBouncer
-from interfaces import AbstractGenerator
+from interfaces.AbstractGenerator import AbstractGenerator
 
-class ContextualEmbeddingsPreTrainingDataGenerator(AbstractGenerator.AbstractGenerator):
+class ContextualEmbeddingsPreTrainingDataGenerator(AbstractGenerator):
 
 	@staticmethod
 	def display_state(state, reverse_map):
@@ -13,16 +13,18 @@ class ContextualEmbeddingsPreTrainingDataGenerator(AbstractGenerator.AbstractGen
 			print(reverse_map[token], end=' ')
 		print()
 
-	def __init__(self, dataset, token_map, input_size, max_blast_radius = 5, display_interval = 2**14):
+	def __init__(self, dataset, token_map, input_size, max_blast_radius = 5):
 		self.dataset = dataset
 		self.forward_map = token_map
 		self.reverse_map = {token:word for word, token in self.forward_map.items()}
 		self.model_input_size = input_size
 		self.sample_bouncer = SampleBouncer.SampleBouncer()
 		self.max_blast_radius = max_blast_radius
-		self.display_interval = display_interval
 
-	def generate(self, samples):
+	def get_token_count(self):
+		return len(self.forward_map)
+
+	def generate(self, samples, is_for_validation=False):
 		features = np.zeros((samples, self.model_input_size), dtype=np.uint16) + self.forward_map['[PAD]']
 		positions = np.zeros((samples, self.model_input_size, 1), dtype=np.uint8)
 		labels = np.zeros((samples, 1), dtype=np.uint16)
@@ -31,13 +33,15 @@ class ContextualEmbeddingsPreTrainingDataGenerator(AbstractGenerator.AbstractGen
 		spans = dict()
 		resamples = 0
 		while s < samples:
-			epicenter = int(random()*len(self.dataset))
+			epicenter = self.dataset.random_training_position()
+			if is_for_validation:
+				epicenter = self.dataset.random_validation_position()
 			blast_radius = int(random()*self.max_blast_radius)
 			crater = {x for x in range(epicenter, epicenter+blast_radius+1)}
 			knockout = choice(list(crater))
 
 			# a random token has been selected for knockout, test if we need to resample based on value or sample frequency
-			if 0 <= knockout < len(self.dataset) and \
+			if 0 <= knockout < self.dataset.get_dataset_size() and \
 					self.dataset[knockout] != self.forward_map['[SEG]'] and \
 					self.sample_bouncer.accept_token(self.dataset[knockout]):
 
@@ -75,10 +79,10 @@ class ContextualEmbeddingsPreTrainingDataGenerator(AbstractGenerator.AbstractGen
 				spans[int(blast_radius)] += 1
 
 				s += 1
-				if s % self.display_interval == 0:
-					print (samples, s, resamples, self.sample_bouncer.get_token_register_size(), sorted(spans.items()))
-					ContextualEmbeddingsPreTrainingDataGenerator.display_state(features[s-1], self.reverse_map)
 			else:
 				resamples += 1
+
+		print(samples, resamples, self.sample_bouncer.get_token_register_size(), sorted(spans.items()))
+		ContextualEmbeddingsPreTrainingDataGenerator.display_state(features[-1], self.reverse_map)
 
 		return features, positions, labels
