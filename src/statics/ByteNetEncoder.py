@@ -10,14 +10,17 @@ class ByteNetEncoderConfig:
 
 	@staticmethod
 	def modified_default(num_tokens, input_size, repr_dimms = 100, hidden_dimms = 600, id_blocks = 4, dilations = [1, 2, 4, 8, 16]):
-		config = dict()
-		config['num_tokens'] = num_tokens
-		config['input_size'] = input_size
-		config['representation_dimensions'] = repr_dimms
-		config['hidden_dimensions'] = hidden_dimms
-		config['id_blocks'] = id_blocks
-		config['dilations'] = dilations
-		return config
+
+		return {
+			'model_arch': 'ByteNetEncoder',
+			'model_type': 'MaskedLanguageModel',
+			'num_tokens': num_tokens,
+			'input_size': input_size,
+			'representation_dimensions': repr_dimms,
+			'hidden_dimensions': hidden_dimms,
+			'id_blocks': id_blocks,
+			'dilations': dilations
+		}
 
 class ByteNetEncoder:
 
