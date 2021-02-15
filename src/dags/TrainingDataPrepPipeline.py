@@ -84,3 +84,5 @@ class TrainingDataPrepPipeline(ResumablePipeline):
 				config['max_bpe_tokens_per_doc'],
 				config['datablock_write_trigger_size']),
 			'DatasetEncoder')
+
+		# set up some variables and then create a model checkpoint
