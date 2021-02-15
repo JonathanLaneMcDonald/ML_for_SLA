@@ -18,7 +18,7 @@ class DatasetEncoder:
 		return bpe_tokens
 
 	@staticmethod
-	def encode_dataset(tokenizer, resampled_documents_path, bpe_token_path, datablock_path, mappings_path, max_tokens_per_document, max_tokens_per_datablock):
+	def encode_dataset(tokenizer, resampled_documents_path, bpe_token_path, datablock_path, datablock_collection_path, mappings_path, max_tokens_per_document, max_tokens_per_datablock):
 		bpe_tokens = DatasetEncoder.prepare_bpe_tokens_from_file(bpe_token_path)
 
 		sequenceMcTagger = SequenceTagger(bpe_tokens.keys())
@@ -30,6 +30,7 @@ class DatasetEncoder:
 		tokens_used = 0
 		tokens = []
 		block_number = 1
+		all_written_datablocks = []
 		with open(resampled_documents_path, 'r', encoding='utf-8') as f:
 			for line in f:
 				new_tokens = ['[SEG]']
@@ -50,11 +51,15 @@ class DatasetEncoder:
 					total_excluded += 1
 
 				if len(tokens) > max_tokens_per_datablock:
-					open(datablock_path+str(block_number), 'wb').write(np.array(tokens, dtype=np.uint16).tobytes())
+					all_written_datablocks.append(datablock_path + str(block_number))
+					open(all_written_datablocks[-1], 'wb').write(np.array(tokens, dtype=np.uint16).tobytes())
 					open(mappings_path, 'w', encoding='utf-8').write('\n'.join([key + '\t' + str(mapping) for key, mapping in bpe_tokens.items()]))
 					block_number += 1
 					tokens = []
 
 		if len(tokens):
-			open(datablock_path+str(block_number), 'wb').write(np.array(tokens, dtype=np.uint16).tobytes())
+			all_written_datablocks.append(datablock_path + str(block_number))
+			open(all_written_datablocks[-1], 'wb').write(np.array(tokens, dtype=np.uint16).tobytes())
 			open(mappings_path, 'w', encoding='utf-8').write('\n'.join([key + '\t' + str(mapping) for key, mapping in bpe_tokens.items()]))
+
+		open(datablock_collection_path,'w').write('\n'.join(all_written_datablocks))

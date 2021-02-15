@@ -4,8 +4,10 @@ from statics.CharacterBuilder import CharacterBuilder
 from statics.TokenLearner import TokenLearner
 from statics.DocumentResampler import DocumentResampler
 from statics.DatasetEncoder import DatasetEncoder
+from statics.ByteNetEncoder import ByteNetEncoder, ByteNetEncoderConfig
 from concrete.ResumablePipeline import ResumablePipeline
-
+from concrete.LinearDataset import LinearDataset
+from concrete.ContextualEmbeddingsPreTrainingDataGenerator import ContextualEmbeddingsPreTrainingDataGenerator
 
 class TrainingDataPrepPipeline(ResumablePipeline):
 	"""This pipeline takes a tokenizer, a configuration, and a target corpus and returns a list of files ready for import and training"""
@@ -17,7 +19,8 @@ class TrainingDataPrepPipeline(ResumablePipeline):
 							'min_tokens_for_dict_entry',
 							'bpe_tokens_to_learn',
 							'max_bpe_tokens_per_doc',
-							'datablock_write_trigger_size'	}
+							'datablock_write_trigger_size',
+							'model_input_size'		}
 
 		for key in required_keys:
 			if not config.__contains__(key) or not isinstance(config[key], int):
@@ -43,6 +46,7 @@ class TrainingDataPrepPipeline(ResumablePipeline):
 		encodable_tokens_path = original_docs_path + ' - encodable tokens'
 		resampled_document_path = original_docs_path + ' - resampled'
 		training_dataset_base_path = original_docs_path + ' - dataset - '
+		training_dataset_collection_path = original_docs_path + ' - dataset files'
 		training_dataset_token_map_path = original_docs_path + ' - dataset bpe token mappings'
 
 		self.run_skippable(
@@ -80,6 +84,7 @@ class TrainingDataPrepPipeline(ResumablePipeline):
 				resampled_document_path,
 				bpe_tokens_base_path + str(config['bpe_tokens_to_learn']),
 				training_dataset_base_path,
+				training_dataset_collection_path,
 				training_dataset_token_map_path,
 				config['max_bpe_tokens_per_doc'],
 				config['datablock_write_trigger_size']),
