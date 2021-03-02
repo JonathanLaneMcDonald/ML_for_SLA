@@ -1,0 +1,32 @@
+TODO
+
+	1) add a static to the training pipe to create an initial model checkpoint
+	2) as part of 1), implement the get_state() functions in each restorable member
+	3) build out the rest of the training pipe, including the loop
+	4) #3 includes ability to restore_state() to all restorable members
+	this should conclude the pre-training pipeline and i'll just need to get to:
+		writing some tests
+		putting in hints as appropriate
+		adding comments as appropriate
+
+
+PreTrainingPipeline:
+	DictionaryBuilder
+	CharacterBuilder
+	TokenLearner
+	DocumentResampler
+	DatasetEncoder
+	TrainingLoop
+
+NERTrainingLoop:
+
+
+InferencePipeline:
+	DatasetEncoder
+	LabelProducer
+
+TrainingLoop:
+
+
+
+
