@@ -24,6 +24,11 @@ class ByteNetEncoderConfig:
 			'dilations': dilations
 		}
 
+	@staticmethod
+	def modified_test(num_tokens, input_size):
+		return ByteNetEncoderConfig.modified_default(num_tokens, input_size, 50, 200, 1, [1,1,1,1])
+
+
 class ByteNetEncoder:
 
 	@staticmethod
