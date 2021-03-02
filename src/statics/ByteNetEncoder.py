@@ -6,6 +6,8 @@ from keras.layers import GlobalMaxPooling1D, Multiply, SpatialDropout1D
 from keras.initializers import RandomNormal
 from keras.optimizers import Adam
 
+from concrete.RestorableConfiguredModel import RestorableConfiguredModel
+
 class ByteNetEncoderConfig:
 
 	@staticmethod
@@ -66,4 +68,4 @@ class ByteNetEncoder:
 		model.compile(loss='sparse_categorical_crossentropy',optimizer=Adam(),metrics=['accuracy'])
 		model.summary()
 
-		return model
+		return RestorableConfiguredModel(model, config)
