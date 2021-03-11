@@ -2,7 +2,7 @@
 from concrete.jpTokenizer import jpTokenizer
 from concrete.jxTokenizer import jxTokenizer
 
-from dags.TrainingDataPrepPipeline import TrainingDataPrepPipeline
+from dags.ContextModelTrainingPipeline import ContextModelTrainingPipeline
 
 
 def get_test_config():
@@ -27,7 +27,7 @@ def get_default_config():
 			}
 
 
-TrainingDataPrepPipeline(jxTokenizer(), 'reddit comments dev', get_test_config())
+ContextModelTrainingPipeline(jxTokenizer(), 'reddit comments dev', get_test_config())
 
 
 
