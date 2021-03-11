@@ -5,6 +5,7 @@ from concrete.RestorableConfiguredModel import RestorableConfiguredModel
 from concrete.ContextualEmbeddingsPreTrainingDataGenerator import ContextualEmbeddingsPreTrainingDataGenerator
 from concrete.TrainingSchedule import TrainingSchedule
 
+
 class ModelCheckpoint:
 
 	"""Purpose of a ModelCheckpoint:

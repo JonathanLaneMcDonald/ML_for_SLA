@@ -44,7 +44,7 @@ class ContextModelTrainingPipeline(ResumablePipeline):
 		linear_dataset = LinearDataset(dataset_files, token_map['[SEG]'])
 		data_generator = ContextualEmbeddingsPreTrainingDataGenerator(linear_dataset, token_map, config['model_input_size'])
 
-		schedule = TrainingSchedule(training_batches=128, validation_batches=16)
+		schedule = TrainingSchedule(training_batches=config['training_batches'], validation_batches=config['validation_batches'])
 
 		ModelCheckpoint.save_checkpoint(model_checkpoint_base_path, restorable_model, data_generator, schedule)
 
