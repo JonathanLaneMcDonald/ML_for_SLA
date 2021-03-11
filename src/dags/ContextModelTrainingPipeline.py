@@ -12,6 +12,7 @@ from concrete.LinearDataset import LinearDataset
 from concrete.ContextualEmbeddingsPreTrainingDataGenerator import ContextualEmbeddingsPreTrainingDataGenerator
 from concrete.TrainingSchedule import TrainingSchedule
 
+
 class ContextModelTrainingPipeline(ResumablePipeline):
 	"""This pipeline takes a tokenizer, a configuration, and a target corpus and returns a list of files ready for import and training"""
 
@@ -46,7 +47,6 @@ class ContextModelTrainingPipeline(ResumablePipeline):
 		schedule = TrainingSchedule(training_batches=128, validation_batches=16)
 
 		ModelCheckpoint.save_checkpoint(model_checkpoint_base_path, restorable_model, data_generator, schedule)
-
 
 	def __init__(self, tokenizer, original_docs_path, config):
 
