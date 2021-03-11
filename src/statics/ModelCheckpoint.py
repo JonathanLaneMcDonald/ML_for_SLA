@@ -1,4 +1,10 @@
 
+import json
+
+from concrete.RestorableConfiguredModel import RestorableConfiguredModel
+from concrete.ContextualEmbeddingsPreTrainingDataGenerator import ContextualEmbeddingsPreTrainingDataGenerator
+from concrete.TrainingSchedule import TrainingSchedule
+
 class ModelCheckpoint:
 
 	"""Purpose of a ModelCheckpoint:
@@ -22,7 +28,7 @@ class ModelCheckpoint:
 			'restorable_model': restorable_model.get_state(),
 			'data_generator': data_generator.get_state(),
 			'training_schedule': training_schedule.get_state(),
-			'evaluation_metrics': [metric.get_state() for metric in evaluation_metrics]
+			#'evaluation_metrics': [metric.get_state() for metric in evaluation_metrics]
 		}
 
 		try:
@@ -31,11 +37,21 @@ class ModelCheckpoint:
 			with open(latest_checkpoint_path, 'w') as json_file:
 				json.dump(checkpoint_config, json_file)
 		except Exception as e:
-			print('Error Writing Model Checkpoints to JSON', e)
+			raise Exception('Error Writing Model Checkpoints to JSON', e)
 
 	@staticmethod
 	def load_checkpoint(checkpoint_path):
 		"""Same as above, but with a restore_state() function"""
 
-		pass
+		try:
+			with open(checkpoint_path, 'r') as json_file:
+				checkpoint = json.load(json_file)
+			# these are currently hard-coded, too, but i'll need to make switches or something
+			restorable_model = RestorableConfiguredModel.restore_state(checkpoint['restorable_model'])
+			data_generator = ContextualEmbeddingsPreTrainingDataGenerator.restore_state(checkpoint['data_generator'])
+			training_schedule = TrainingSchedule.restore_state(checkpoint['training_schedule'])
+			return restorable_model, data_generator, training_schedule, []
+
+		except Exception as e:
+			raise Exception('Error Recreating Model Checkpoint from JSON:', e)
 

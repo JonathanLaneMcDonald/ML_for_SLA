@@ -1,10 +1,13 @@
 
+from interfaces.AbstractRestorableObject import AbstractRestorableObject
+
 from numpy.random import random
 
-class SampleBouncer:
-	def __init__(self):
-		self.token_register = dict()
-		self.total_samples_taken = 0
+
+class SampleBouncer(AbstractRestorableObject):
+	def __init__(self, prepped_token_register = dict(), prepped_total_samples = 0):
+		self.token_register = prepped_token_register
+		self.total_samples_taken = prepped_total_samples
 
 	def register_sampled(self, token):
 		if token not in self.token_register:
@@ -20,3 +23,18 @@ class SampleBouncer:
 
 	def get_token_register_size(self):
 		return len(self.token_register)
+
+	def get_state(self):
+		return {
+			'total_samples_taken': self.total_samples_taken,
+			'token_register': {int(key): int(value) for key, value in self.token_register.items()}
+		}
+
+	@staticmethod
+	def restore_state(state: dict):
+		try:
+			total_samples = state['total_samples_taken']
+			token_register = {int(key): int(value) for key, value in state['token_register'].items()}
+			return SampleBouncer(token_register, total_samples)
+		except Exception as e:
+			raise Exception("SampleBouncer::restore_state(): ", e)

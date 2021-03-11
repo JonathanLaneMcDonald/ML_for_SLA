@@ -2,7 +2,10 @@
 import numpy as np
 from numpy.random import random
 
-class LinearDataset:
+from interfaces.AbstractRestorableObject import AbstractRestorableObject
+
+
+class LinearDataset(AbstractRestorableObject):
 
 	@staticmethod
 	def find_next_delimiter(dataset, delimiter, position):
@@ -11,6 +14,10 @@ class LinearDataset:
 		return position
 
 	def __init__(self, numpy_array_paths, entry_delimiter, validation_split = 0.10):
+		self.numpy_array_paths = numpy_array_paths
+		self.entry_delimiter = entry_delimiter
+		self.validation_split = validation_split
+
 		self.dataset = np.array([], dtype=np.uint16)
 
 		try:
@@ -22,6 +29,23 @@ class LinearDataset:
 			raise e
 
 		self.validation_start = LinearDataset.find_next_delimiter(self.dataset, entry_delimiter, int(len(self.dataset)*(1-validation_split)))
+
+	def get_state(self):
+		return {
+			'numpy_array_paths': self.numpy_array_paths,
+			'entry_delimiter': self.entry_delimiter,
+			'validation_split': self.validation_split
+		}
+
+	@staticmethod
+	def restore_state(state: dict):
+		try:
+			numpy_array_paths = state['numpy_array_paths']
+			entry_delimiter = state['entry_delimiter']
+			validation_split = state['validation_split']
+			return LinearDataset(numpy_array_paths, entry_delimiter, validation_split)
+		except Exception as e:
+			raise Exception("LinearDataset::restore_state(): ", e)
 
 	def __getitem__(self, key):
 		return self.dataset[key]
