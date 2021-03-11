@@ -1,5 +1,7 @@
 
-from keras.models import Model
+import time
+
+from keras.models import Model, save_model, load_model
 from interfaces.AbstractRestorableObject import AbstractRestorableObject
 
 class RestorableConfiguredModel(AbstractRestorableObject):
@@ -15,10 +17,21 @@ class RestorableConfiguredModel(AbstractRestorableObject):
 		return self.model.predict(**kwargs)
 
 	def get_state(self):
-		pass
+		try:
+			saved_model_path = "model checkpoint time="+str(time.time())
+			save_model(saved_model_path)
+			return {
+				'saved_model_path': saved_model_path,
+				'model_config': self.config
+			}
+		except Exception as e:
+			print("RestorableConfiguratedModel::get_state(): ", e)
 
-	def restore_state(self, state: dict):
-		pass
-
-
-
+	@staticmethod
+	def restore_state(state: dict):
+		try:
+			restorable_model = load_model(state['saved_model_path'])
+			model_config = state['model_config']
+			return RestorableConfiguredModel(restorable_model, model_config)
+		except Exception as e:
+			print("RestorableConfiguredModel::restore_state(): ", e)
