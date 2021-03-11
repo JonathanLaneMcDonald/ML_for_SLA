@@ -13,7 +13,7 @@ class ResumablePipeline:
 				with open(self.status_path, 'r') as json_file:
 					self.status = json.load(json_file)
 			except Exception as e:
-				print('Error Reading Status from JSON:', e)
+				raise Exception('Error Reading Status from JSON:', e)
 
 	def run_skippable(self, skippable_task, task_label):
 		if (task_label not in self.status) or (self.status[task_label] != 'complete'):
@@ -21,7 +21,7 @@ class ResumablePipeline:
 				skippable_task()
 				self.write_completed_task(task_label)
 			except Exception as e:
-				print('Error Completing Task:', e)
+				raise Exception('Error Completing Task:', e)
 		else:
 			print('Task Previously Completed (Skipping):', task_label)
 
@@ -31,6 +31,6 @@ class ResumablePipeline:
 			with open(self.status_path, 'w') as json_file:
 				json.dump(self.status, json_file)
 		except Exception as e:
-			print('Error Writing Status to JSON', e)
+			raise Exception('Error Writing Status to JSON', e)
 
 

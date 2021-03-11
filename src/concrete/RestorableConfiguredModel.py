@@ -19,13 +19,13 @@ class RestorableConfiguredModel(AbstractRestorableObject):
 	def get_state(self):
 		try:
 			saved_model_path = "model checkpoint time="+str(time.time())
-			save_model(saved_model_path)
+			save_model(self.model, saved_model_path, save_format='h5')
 			return {
 				'saved_model_path': saved_model_path,
 				'model_config': self.config
 			}
 		except Exception as e:
-			print("RestorableConfiguratedModel::get_state(): ", e)
+			raise Exception("RestorableConfiguratedModel::get_state(): ", e)
 
 	@staticmethod
 	def restore_state(state: dict):
@@ -34,4 +34,4 @@ class RestorableConfiguredModel(AbstractRestorableObject):
 			model_config = state['model_config']
 			return RestorableConfiguredModel(restorable_model, model_config)
 		except Exception as e:
-			print("RestorableConfiguredModel::restore_state(): ", e)
+			raise Exception("RestorableConfiguredModel::restore_state(): ", e)
